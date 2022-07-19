@@ -20,9 +20,12 @@ ProcessingTask processingTask = new();
 processingTask.Start(loggerFactory, processingPool.Reader, memoryPool.Writer);
 InputTask inputTask = new();
 inputTask.Start(loggerFactory, memoryPool.Reader, processingPool.Writer);
+SocketTask socketTask = new();
+socketTask.Start(loggerFactory);
 
 Console.WriteLine("Running... press any key to stop");
 Console.ReadKey();
 
 processingTask.Stop();
 inputTask.Stop();
+socketTask.Stop();
