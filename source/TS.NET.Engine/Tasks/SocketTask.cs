@@ -91,47 +91,53 @@ namespace TS.NET.Engine
 
                     logger.LogInformation("Got request for waveform...");
 
-                    if (bridge.RequestAndWaitForData(500))
-                    {
-                        ulong channelLength = (ulong)bridge.Configuration.ChannelLength;
+                    while (true) {
+                        cancelToken.ThrowIfCancellationRequested();
 
-                        uint viewportLength = 1000000;// (uint)upDownIndex.Value;
-                        if (viewportLength < 100)
-                            viewportLength = 100;
-                        if (viewportLength > 10000000)
-                            viewportLength = (uint)channelLength;
+                        if (bridge.RequestAndWaitForData(500))
+                        {
+                            ulong channelLength = (ulong)bridge.Configuration.ChannelLength;
 
-                        var cfg = bridge.Configuration;
-                        var data = bridge.AcquiredRegion;
-                        // int offset = (int)((channelLength / 2) - (viewportLength / 2));
+                            uint viewportLength = 1000000;// (uint)upDownIndex.Value;
+                            if (viewportLength < 100)
+                                viewportLength = 100;
+                            if (viewportLength > 10000000)
+                                viewportLength = (uint)channelLength;
 
-                        WaveformHeader header = new() {
-                            seqnum = seqnum,
-                            numChannels = 1,
-                            fsPerSample = 1000,
-                            triggerFs = 0,
-                            hwWaveformsPerSec = 1
-                        };
+                            var cfg = bridge.Configuration;
+                            var data = bridge.AcquiredRegion;
+                            // int offset = (int)((channelLength / 2) - (viewportLength / 2));
 
-                        ChannelHeader chHeader = new() {
-                            chNum = 0,
-                            depth = channelLength,
-                            scale = 1,
-                            offset = 0,
-                            trigphase = 0,
-                            clipping = 0
-                        };
+                            WaveformHeader header = new() {
+                                seqnum = seqnum,
+                                numChannels = 1,
+                                fsPerSample = 1000,
+                                triggerFs = 0,
+                                hwWaveformsPerSec = 1
+                            };
 
-                        unsafe {
-                            clientSocket.Send(new ReadOnlySpan<byte>(&header, sizeof(WaveformHeader)));
-                            clientSocket.Send(new ReadOnlySpan<byte>(&chHeader, sizeof(ChannelHeader)));
-                            clientSocket.Send(data.Slice(0, (Int32)channelLength));
+                            ChannelHeader chHeader = new() {
+                                chNum = 0,
+                                depth = channelLength,
+                                scale = 1,
+                                offset = 0,
+                                trigphase = 0,
+                                clipping = 0
+                            };
+
+                            unsafe {
+                                clientSocket.Send(new ReadOnlySpan<byte>(&header, sizeof(WaveformHeader)));
+                                clientSocket.Send(new ReadOnlySpan<byte>(&chHeader, sizeof(ChannelHeader)));
+                                clientSocket.Send(data.Slice(0, (Int32)channelLength));
+                            }
+
+                            seqnum++;
+                            // string textInfo = JsonConvert.SerializeObject(cfg, Formatting.Indented, new Newtonsoft.Json.Converters.StringEnumConverter()); 
+                            // logger.LogInfo(textInfo);
+                            // Thread.Sleep(10);
+
+                            break;
                         }
-
-                        seqnum++;
-                        // string textInfo = JsonConvert.SerializeObject(cfg, Formatting.Indented, new Newtonsoft.Json.Converters.StringEnumConverter()); 
-                        // logger.LogInfo(textInfo);
-                        // Thread.Sleep(10);
                     }
                 }
             }
