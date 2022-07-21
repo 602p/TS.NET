@@ -9,11 +9,11 @@ namespace TS.NET.Engine
         private CancellationTokenSource? cancelTokenSource;
         private Task? taskLoop;
 
-        public void Start(ILoggerFactory loggerFactory, BlockingChannelReader<ThunderscopeMemory> memoryPool, BlockingChannelWriter<ThunderscopeMemory> processingPool)
+        public void Start(ILoggerFactory loggerFactory, Thunderscope thunderscope, BlockingChannelReader<ThunderscopeMemory> memoryPool, BlockingChannelWriter<ThunderscopeMemory> processingPool)
         {
             var logger = loggerFactory.CreateLogger("InputTask");
             cancelTokenSource = new CancellationTokenSource();
-            taskLoop = Task.Factory.StartNew(() => Loop(logger, memoryPool, processingPool, cancelTokenSource.Token), TaskCreationOptions.LongRunning);
+            taskLoop = Task.Factory.StartNew(() => Loop(logger, thunderscope, memoryPool, processingPool, cancelTokenSource.Token), TaskCreationOptions.LongRunning);
         }
 
         public void Stop()
@@ -22,18 +22,13 @@ namespace TS.NET.Engine
             taskLoop?.Wait();
         }
 
-        private static void Loop(ILogger logger, BlockingChannelReader<ThunderscopeMemory> memoryPool, BlockingChannelWriter<ThunderscopeMemory> processingPool, CancellationToken cancelToken)
+        private static void Loop(ILogger logger, Thunderscope thunderscope, BlockingChannelReader<ThunderscopeMemory> memoryPool, BlockingChannelWriter<ThunderscopeMemory> processingPool, CancellationToken cancelToken)
         {
             try
             {
                 Thread.CurrentThread.Name = "TS.NET Input";
                 Thread.CurrentThread.Priority = ThreadPriority.Highest;
 
-                var devices = Thunderscope.IterateDevices();
-                if (devices.Count == 0)
-                    throw new Exception("No thunderscopes found");
-                Thunderscope thunderscope = new Thunderscope();
-                thunderscope.Open(devices[0]);
                 thunderscope.EnableChannel(0);
                 thunderscope.EnableChannel(1);
                 thunderscope.EnableChannel(2);
@@ -63,7 +58,7 @@ namespace TS.NET.Engine
             catch (OperationCanceledException)
             {
                 logger.LogDebug($"{nameof(InputTask)} stopping");
-                throw;
+                // throw;
             }
             catch (Exception ex)
             {

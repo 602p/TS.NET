@@ -32,13 +32,13 @@ namespace TS.NET.Engine
         private CancellationTokenSource? cancelTokenSource;
         private Task? taskLoop;
 
-        public void Start(ILoggerFactory loggerFactory)
+        public void Start(ILoggerFactory loggerFactory, Thunderscope scope)
         {
             var logger = loggerFactory.CreateLogger("SocketTask");
             cancelTokenSource = new CancellationTokenSource();
             uint bufferLength = 4 * 100 * 1000 * 1000;      //Maximum record length = 100M samples per channel
             ThunderscopeBridgeReader bridge = new(new ThunderscopeBridgeOptions("ThunderScope.1", bufferLength), loggerFactory);
-            taskLoop = Task.Factory.StartNew(() => Loop(logger, bridge, cancelTokenSource.Token), TaskCreationOptions.LongRunning);
+            taskLoop = Task.Factory.StartNew(() => Loop(logger, scope, bridge, cancelTokenSource.Token), TaskCreationOptions.LongRunning);
         }
 
         public void Stop()
@@ -47,7 +47,7 @@ namespace TS.NET.Engine
             taskLoop?.Wait();
         }
 
-        private static void Loop(ILogger logger, ThunderscopeBridgeReader bridge, CancellationToken cancelToken)
+        private static void Loop(ILogger logger, Thunderscope scope, ThunderscopeBridgeReader bridge, CancellationToken cancelToken)
         {
             Thread.CurrentThread.Name = "TS.NET Socket";
 
@@ -89,7 +89,7 @@ namespace TS.NET.Engine
                         if (numByte != 0) break;
                     }
 
-                    logger.LogInformation("Got request for waveform...");
+                    // logger.LogDebug("Got request for waveform...");
 
                     while (true) {
                         cancelToken.ThrowIfCancellationRequested();
@@ -110,7 +110,7 @@ namespace TS.NET.Engine
 
                             WaveformHeader header = new() {
                                 seqnum = seqnum,
-                                numChannels = 1,
+                                numChannels = 4,
                                 fsPerSample = 1000,
                                 triggerFs = 0,
                                 hwWaveformsPerSec = 1
@@ -127,8 +127,17 @@ namespace TS.NET.Engine
 
                             unsafe {
                                 clientSocket.Send(new ReadOnlySpan<byte>(&header, sizeof(WaveformHeader)));
-                                clientSocket.Send(new ReadOnlySpan<byte>(&chHeader, sizeof(ChannelHeader)));
-                                clientSocket.Send(data.Slice(0, (Int32)channelLength));
+
+                                for (byte ch = 0; ch < 4; ch++) {
+                                    ThunderscopeChannel tChannel = scope.Channels[ch];
+
+                                    chHeader.chNum = ch;
+                                    chHeader.scale = (float)(tChannel.VoltsDiv / 1000 * 10) / 255f;
+                                    chHeader.offset = (float)tChannel.VoltsOffset;
+
+                                    clientSocket.Send(new ReadOnlySpan<byte>(&chHeader, sizeof(ChannelHeader)));
+                                    clientSocket.Send(data.Slice(ch * (int)channelLength, (int)channelLength));
+                                }
                             }
 
                             seqnum++;
@@ -144,7 +153,7 @@ namespace TS.NET.Engine
             catch (OperationCanceledException)
             {
                 logger.LogDebug($"{nameof(SocketTask)} stopping");
-                throw;
+                // throw;
             }
             catch (Exception ex)
             {

@@ -64,7 +64,7 @@ namespace TS.NET.Engine
 
                 Span<uint> triggerIndices = new uint[ThunderscopeMemory.Length / 1000];     // 1000 samples is the minimum holdoff
                 Span<uint> holdoffEndIndices = new uint[ThunderscopeMemory.Length / 1000];  // 1000 samples is the minimum holdoff
-                RisingEdgeTriggerAlt trigger = new(200, 190, (ulong)(config.ChannelLength / 2));
+                RisingEdgeTriggerAlt trigger = new(200, 100, (ulong)(config.ChannelLength / 2));
 
                 DateTimeOffset startTime = DateTimeOffset.UtcNow;
                 uint dequeueCounter = 0;
@@ -197,7 +197,7 @@ namespace TS.NET.Engine
             catch (OperationCanceledException)
             {
                 logger.LogDebug($"{nameof(ProcessingTask)} stopping");
-                throw;
+                // throw;
             }
             catch (Exception ex)
             {

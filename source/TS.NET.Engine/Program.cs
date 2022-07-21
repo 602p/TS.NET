@@ -13,15 +13,27 @@ BlockingChannel<ThunderscopeMemory> memoryPool = new();
 for (int i = 0; i < 120; i++)        // 120 = about 1 seconds worth of samples at 1GSPS
     memoryPool.Writer.Write(new ThunderscopeMemory());
 
-Thread.Sleep(1000);
+Thread.Sleep(100);
+
+var devices = Thunderscope.IterateDevices();
+if (devices.Count == 0)
+    throw new Exception("No thunderscopes found");
+Thunderscope thunderscope = new Thunderscope();
+thunderscope.Open(devices[0]);
 
 BlockingChannel<ThunderscopeMemory> processingPool = new();
+
 ProcessingTask processingTask = new();
 processingTask.Start(loggerFactory, processingPool.Reader, memoryPool.Writer);
+
 InputTask inputTask = new();
-inputTask.Start(loggerFactory, memoryPool.Reader, processingPool.Writer);
+inputTask.Start(loggerFactory, thunderscope, memoryPool.Reader, processingPool.Writer);
+
 SocketTask socketTask = new();
-socketTask.Start(loggerFactory);
+socketTask.Start(loggerFactory, thunderscope);
+
+SCPITask scpiTask = new();
+scpiTask.Start(loggerFactory, thunderscope);
 
 Console.WriteLine("Running... press any key to stop");
 Console.ReadKey();
@@ -29,3 +41,5 @@ Console.ReadKey();
 processingTask.Stop();
 inputTask.Stop();
 socketTask.Stop();
+scpiTask.Stop();
+thunderscope.Close();
