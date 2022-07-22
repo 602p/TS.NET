@@ -79,27 +79,30 @@ namespace TS.NET.Engine
                 {
                     byte[] bytes = new Byte[1];
          
-                    // Wait for flow control 'K'
-                    while (true) {
-                        cancelToken.ThrowIfCancellationRequested();
+                    // // Wait for flow control 'K'
+                    // while (true) {
+                    //     cancelToken.ThrowIfCancellationRequested();
 
-                        if (!clientSocket.Poll(10_000, SelectMode.SelectRead)) continue;
+                    //     if (!clientSocket.Poll(10_000, SelectMode.SelectRead)) continue;
          
-                        int numByte = clientSocket.Receive(bytes);
+                    //     int numByte = clientSocket.Receive(bytes);
                          
-                        if (numByte != 0) break;
-                    }
+                    //     if (numByte != 0) break;
+                    // }
 
                     // logger.LogDebug("Got request for waveform...");
+
+                    var cfg = bridge.GetConfiguration();
+                    ulong channelLength = (ulong)cfg.ChannelLength;
+
+                    byte[] localBuffer = new byte[channelLength * 4];
 
                     while (true) {
                         cancelToken.ThrowIfCancellationRequested();
 
                         if (bridge.RequestAndWaitForData(500))
                         {
-                            var cfg = bridge.GetConfiguration();
                             var data = bridge.GetAcquiredRegion();
-                            ulong channelLength = (ulong)cfg.ChannelLength;
 
                             WaveformHeader header = new() {
                                 seqnum = seqnum,
@@ -118,8 +121,16 @@ namespace TS.NET.Engine
                                 clipping = 0
                             };
 
+                            bool actuallySend = false;
+
                             unsafe {
-                                clientSocket.Send(new ReadOnlySpan<byte>(&header, sizeof(WaveformHeader)));
+                                if (actuallySend) clientSocket.Send(new ReadOnlySpan<byte>(&header, sizeof(WaveformHeader)));
+
+                                fixed (byte* bridgeBuf = data, localBuf = localBuffer) {
+                                    Buffer.MemoryCopy(bridgeBuf, localBuf, data.Length, (long)(channelLength * 4));
+                                }
+
+                                Span<byte> sendSpan = (Span<byte>)localBuffer;
 
                                 for (byte ch = 0; ch < 4; ch++) {
                                     ThunderscopeChannel tChannel = scope.Channels[ch];
@@ -128,10 +139,13 @@ namespace TS.NET.Engine
                                     chHeader.scale = (float)((float)tChannel.VoltsDiv / 1000f * 10f) / 255f;
                                     chHeader.offset = -(float)tChannel.VoltsOffset;
 
-                                    clientSocket.Send(new ReadOnlySpan<byte>(&chHeader, sizeof(ChannelHeader)));
-                                    clientSocket.Send(data.Slice(ch * (int)channelLength, (int)channelLength));
+                                    if (actuallySend) clientSocket.Send(new ReadOnlySpan<byte>(&chHeader, sizeof(ChannelHeader)));
+                                    if (actuallySend) clientSocket.Send(sendSpan.Slice(ch * (int)channelLength, (int)channelLength));
                                 }
                             }
+
+                            Thread.Sleep(100);
+                            logger.LogDebug("Send!");
 
                             seqnum++;
                             // string textInfo = JsonConvert.SerializeObject(cfg, Formatting.Indented, new Newtonsoft.Json.Converters.StringEnumConverter()); 
