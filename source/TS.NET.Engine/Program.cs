@@ -25,14 +25,18 @@ thunderscope.Open(devices[0]);
 
 BlockingChannel<ThunderscopeMemory> processingPool = new(bufferCount);
 
+uint bufferLength = 4 * 100 * 1000 * 1000;
+LocalThunderscopeBridgeWriter bridgeWriter = new LocalThunderscopeBridgeWriter(new ThunderscopeBridgeOptions("ThunderScope.1", bufferLength), loggerFactory);
+LocalThunderscopeBridgeReader bridgeReader = new LocalThunderscopeBridgeReader(bridgeWriter);
+
 ProcessingTask processingTask = new();
-processingTask.Start(loggerFactory, processingPool.Reader, memoryPool.Writer);
+processingTask.Start(loggerFactory, processingPool.Reader, memoryPool.Writer, bridgeWriter);
 
 InputTask inputTask = new();
 inputTask.Start(loggerFactory, thunderscope, memoryPool.Reader, processingPool.Writer);
 
 SocketTask socketTask = new();
-socketTask.Start(loggerFactory, thunderscope);
+socketTask.Start(loggerFactory, thunderscope, bridgeReader);
 
 SCPITask scpiTask = new();
 scpiTask.Start(loggerFactory, thunderscope);

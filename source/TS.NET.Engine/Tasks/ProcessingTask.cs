@@ -11,14 +11,14 @@ namespace TS.NET.Engine
         private Task? taskLoop;
 
         //, Action<Memory<double>> action
-        public void Start(ILoggerFactory loggerFactory, BlockingChannelReader<ThunderscopeMemory> processingPool, BlockingChannelWriter<ThunderscopeMemory> memoryPool)
+        public void Start(ILoggerFactory loggerFactory, BlockingChannelReader<ThunderscopeMemory> processingPool, BlockingChannelWriter<ThunderscopeMemory> memoryPool, IThunderscopeBridgeWriter bridge)
         {
             var logger = loggerFactory.CreateLogger("ProcessingTask");
             cancelTokenSource = new CancellationTokenSource();
             ulong dataCapacityBytes = 4 * 100 * 1000 * 1000;      // Maximum capacity = 100M samples per channel
             // Bridge is cross-process shared memory for the UI to read triggered acquisitions
             // The trigger point is _always_ in the middle of the channel block, and when the UI sets positive/negative trigger point, it's just moving the UI viewport
-            ThunderscopeBridgeWriter bridge = new(new ThunderscopeBridgeOptions("ThunderScope.1", dataCapacityBytes), loggerFactory);
+            // ThunderscopeBridgeWriter bridge = new(new ThunderscopeBridgeOptions("ThunderScope.1", dataCapacityBytes), loggerFactory);
             taskLoop = Task.Factory.StartNew(() => Loop(logger, processingPool, memoryPool, bridge, cancelTokenSource.Token), TaskCreationOptions.LongRunning);
         }
 
@@ -29,7 +29,7 @@ namespace TS.NET.Engine
         }
 
         // The job of this task - pull data from scope driver/simulator, shuffle if 2/4 channels, horizontal sum, trigger, and produce window segments.
-        private static void Loop(ILogger logger, BlockingChannelReader<ThunderscopeMemory> processingPool, BlockingChannelWriter<ThunderscopeMemory> memoryPool, ThunderscopeBridgeWriter bridge, CancellationToken cancelToken)
+        private static void Loop(ILogger logger, BlockingChannelReader<ThunderscopeMemory> processingPool, BlockingChannelWriter<ThunderscopeMemory> memoryPool, IThunderscopeBridgeWriter bridge, CancellationToken cancelToken)
         {
             try
             {
@@ -47,7 +47,7 @@ namespace TS.NET.Engine
                     TriggerChannel = TriggerChannel.Two,
                     TriggerMode = TriggerMode.Normal
                 };
-                bridge.Configuration = config;
+                bridge.SetConfiguration(config);
                 bridge.MonitoringReset();
 
                 // Various buffers allocated once and reused forevermore.
@@ -172,7 +172,7 @@ namespace TS.NET.Engine
                                 {
                                     for (int i = 0; i < holdoffEndCount; i++)
                                     {
-                                        var bridgeSpan = bridge.AcquiringRegion;
+                                        var bridgeSpan = bridge.GetAcquiringRegion();
                                         uint holdoffEndIndex = (uint)postShuffleCh1_4.Length - holdoffEndIndices[i];
                                         circularBuffer1.Read(bridgeSpan.Slice(0, channelLength), holdoffEndIndex);
                                         circularBuffer2.Read(bridgeSpan.Slice(channelLength, channelLength), holdoffEndIndex);
@@ -193,7 +193,7 @@ namespace TS.NET.Engine
 
                     if (oneSecond.ElapsedMilliseconds >= 1000)
                     {
-                        logger.LogDebug($"Triggers/sec: {oneSecondHoldoffCount / (oneSecond.ElapsedMilliseconds * 0.001):F2}, dequeues/sec: {oneSecondDequeueCount / (oneSecond.ElapsedMilliseconds * 0.001):F2}, dequeue count: {dequeueCounter}, trigger count: {bridge.Monitoring.TotalAcquisitions}, UI displayed triggers: {bridge.Monitoring.TotalAcquisitions - bridge.Monitoring.MissedAcquisitions}, UI dropped triggers: {bridge.Monitoring.MissedAcquisitions}");
+                        logger.LogDebug($"Triggers/sec: {oneSecondHoldoffCount / (oneSecond.ElapsedMilliseconds * 0.001):F2}, dequeues/sec: {oneSecondDequeueCount / (oneSecond.ElapsedMilliseconds * 0.001):F2}, dequeue count: {dequeueCounter}, trigger count: {bridge.GetMonitoring().TotalAcquisitions}, UI displayed triggers: {bridge.GetMonitoring().TotalAcquisitions - bridge.GetMonitoring().MissedAcquisitions}, UI dropped triggers: {bridge.GetMonitoring().MissedAcquisitions}");
                         oneSecond.Restart();
                         oneSecondHoldoffCount = 0;
                         oneSecondDequeueCount = 0;

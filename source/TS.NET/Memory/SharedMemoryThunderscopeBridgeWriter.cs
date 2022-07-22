@@ -12,7 +12,7 @@ namespace TS.NET
 {
     // This is a shared memory-mapped file between processes, with only a single writer and a single reader with a header struct
     // Not thread safe
-    public class ThunderscopeBridgeWriter : IDisposable
+    public class SharedMemoryThunderscopeBridgeWriter : IThunderscopeBridgeWriter
     {
         private readonly ThunderscopeBridgeOptions options;
         private readonly ulong dataCapacityInBytes;
@@ -26,10 +26,11 @@ namespace TS.NET
         private bool dataRequested = false;
         private bool acquiringRegionFilled = false;
 
-        public Span<byte> AcquiringRegion { get { return GetAcquiringRegion(); } }
-        public ThunderscopeMonitoring Monitoring { get { return header.Monitoring; } }
+        public ThunderscopeMonitoring GetMonitoring() { 
+            return header.Monitoring;
+        }
 
-        public unsafe ThunderscopeBridgeWriter(ThunderscopeBridgeOptions options, ILoggerFactory loggerFactory)
+        public unsafe SharedMemoryThunderscopeBridgeWriter(ThunderscopeBridgeOptions options, ILoggerFactory loggerFactory)
         {
             this.options = options;
             dataCapacityInBytes = options.BridgeCapacityBytes - (uint)sizeof(ThunderscopeBridgeHeader);
@@ -75,14 +76,11 @@ namespace TS.NET
             file.Dispose();
         }
 
-        public ThunderscopeConfiguration Configuration
+        public void SetConfiguration(ThunderscopeConfiguration value)
         {
-            set
-            {
-                // This is a shallow copy, but considering the struct should be 100% blitable (i.e. no reference types), this is effectively a full copy
-                header.Configuration = value;
-                SetHeader();
-            }
+            // This is a shallow copy, but considering the struct should be 100% blitable (i.e. no reference types), this is effectively a full copy
+            header.Configuration = value;
+            SetHeader();
         }
 
         public void MonitoringReset()
@@ -140,7 +138,7 @@ namespace TS.NET
             return ptr;
         }
 
-        private unsafe Span<byte> GetAcquiringRegion()
+        public unsafe Span<byte> GetAcquiringRegion()
         {
             int regionLength = (int)dataCapacityInBytes / 2;
             return header.AcquiringRegion switch
