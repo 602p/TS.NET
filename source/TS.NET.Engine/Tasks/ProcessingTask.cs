@@ -34,6 +34,9 @@ namespace TS.NET.Engine
             try
             {
                 Thread.CurrentThread.Name = "TS.NET Processing";
+                Thread.CurrentThread.Priority = ThreadPriority.AboveNormal;
+
+                logger.LogDebug($"Thread ID: {Thread.CurrentThread.ManagedThreadId}");
 
                 // Configuration values to be updated during runtime... conveiniently all on ThunderscopeMemoryBridgeHeader
                 ThunderscopeConfiguration config = new()

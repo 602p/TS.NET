@@ -51,6 +51,8 @@ namespace TS.NET.Engine
         {
             Thread.CurrentThread.Name = "TS.NET Socket";
 
+            logger.LogDebug($"Thread ID: {Thread.CurrentThread.ManagedThreadId}");
+
             Socket clientSocket = null;
 
             try

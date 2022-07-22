@@ -29,6 +29,8 @@ namespace TS.NET.Engine
                 Thread.CurrentThread.Name = "TS.NET Input";
                 Thread.CurrentThread.Priority = ThreadPriority.Highest;
 
+                logger.LogDebug($"Thread ID: {Thread.CurrentThread.ManagedThreadId}");
+
                 thunderscope.EnableChannel(0);
                 thunderscope.EnableChannel(1);
                 thunderscope.EnableChannel(2);
@@ -38,10 +40,15 @@ namespace TS.NET.Engine
                 while (true)
                 {
                     cancelToken.ThrowIfCancellationRequested();
-                    var memory = memoryPool.Read();
+
                     try
                     {
-                        thunderscope.Read(memory);
+                        lock (thunderscope) {
+                            if (!thunderscope.Enabled) continue;
+                            var memory = memoryPool.Read();
+                            thunderscope.Read(memory);
+                            processingPool.Write(memory);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -52,7 +59,6 @@ namespace TS.NET.Engine
                         }
                         throw;
                     }
-                    processingPool.Write(memory);
                 }
             }
             catch (OperationCanceledException)

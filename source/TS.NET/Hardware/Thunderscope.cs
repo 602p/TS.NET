@@ -7,10 +7,20 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading;
 using TS.NET.Interop;
 
 namespace TS.NET
 {
+
+    public class ThunderscopeException : Exception {
+        public ThunderscopeException(String v) : base(v) {}
+    }
+
+    public class ThunderscopeNotRunningException : ThunderscopeException {
+        public ThunderscopeNotRunningException(String v) : base(v) {}
+    }
+
     public record ThunderscopeDevice
     {
         public string DevicePath { get; set; }
@@ -37,6 +47,8 @@ namespace TS.NET
 
         private bool open = false;
         private ThunderscopeHardwareState hardwareState = new();
+
+        public bool Enabled { get { return hardwareState.DatamoverEnabled; } }
 
         public ThunderscopeChannel[] Channels = new ThunderscopeChannel[] { new(), new(), new(), new() };
 
@@ -94,7 +106,7 @@ namespace TS.NET
             if (!open)
                 throw new Exception("Thunderscope not open");
             if (!hardwareState.DatamoverEnabled)
-                throw new Exception("Thunderscope not started");
+                throw new ThunderscopeNotRunningException("Thunderscope not started");
 
             // Buffer data must be aligned to 4096
             //if (0xFFF & (ptrdiff_t)data)

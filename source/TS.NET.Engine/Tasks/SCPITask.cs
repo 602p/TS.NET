@@ -28,6 +28,9 @@ namespace TS.NET.Engine
         private static void Loop(ILogger logger, Thunderscope scope, CancellationToken cancelToken)
         {
             Thread.CurrentThread.Name = "TS.NET SCPI";
+            Thread.CurrentThread.Priority = ThreadPriority.BelowNormal;
+
+            logger.LogDebug($"Thread ID: {Thread.CurrentThread.ManagedThreadId}");
 
             Socket clientSocket = null;
 
@@ -137,10 +140,20 @@ namespace TS.NET.Engine
                     if (command == "START") {
                         // Start
                         logger.LogDebug("Start acquisition");
+                        lock (scope) {
+                            if (!scope.Enabled) {
+                                scope.Start();
+                            }
+                        }
                         return null;
                     } else if (command == "STOP") {
                         // Stop
                         logger.LogDebug("Stop acquisition");
+                        lock (scope) {
+                            if (scope.Enabled) {
+                                scope.Stop();
+                            }
+                        }
                         return null;
                     } else if (command == "SINGLE") {
                         // Single capture
@@ -203,8 +216,17 @@ namespace TS.NET.Engine
                         double offset = Convert.ToDouble(argument);
                         // Set offset
                         logger.LogDebug($"Set ch {chNum} offset to {offset}V");
-                        scope.Channels[chNum].VoltsOffset = offset;
-                        scope.EnableChannel(chNum);
+
+                        offset = Math.Clamp(offset, -0.5, 0.5);
+
+                        lock (scope) {
+                            bool wasRunning = scope.Enabled;
+                            if (wasRunning) scope.Stop();
+                            scope.Channels[chNum].VoltsOffset = offset;
+                            scope.EnableChannel(chNum);
+                            if (wasRunning) scope.Start();
+                        }
+
                         return null;
                     } else if (command == "RANGE" && hasArg) {
                         double range = Convert.ToDouble(argument);
