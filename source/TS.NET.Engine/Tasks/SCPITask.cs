@@ -203,6 +203,8 @@ namespace TS.NET.Engine
                         double offset = Convert.ToDouble(argument);
                         // Set offset
                         logger.LogDebug($"Set ch {chNum} offset to {offset}V");
+                        scope.Channels[chNum].VoltsOffset = offset;
+                        scope.EnableChannel(chNum);
                         return null;
                     } else if (command == "RANGE" && hasArg) {
                         double range = Convert.ToDouble(argument);
