@@ -11,7 +11,7 @@ namespace TS.NET.Engine
         private Task? taskLoop;
 
         //, Action<Memory<double>> action
-        public void Start(ILoggerFactory loggerFactory, BlockingChannelReader<ThunderscopeMemory> processingPool, BlockingChannelWriter<ThunderscopeMemory> memoryPool)
+        public IThunderscopeBridgeReader Start(ILoggerFactory loggerFactory, BlockingChannelReader<ThunderscopeMemory> processingPool, BlockingChannelWriter<ThunderscopeMemory> memoryPool)
         {
             var logger = loggerFactory.CreateLogger("ProcessingTask");
             cancelTokenSource = new CancellationTokenSource();
@@ -20,6 +20,7 @@ namespace TS.NET.Engine
             // The trigger point is _always_ in the middle of the channel block, and when the UI sets positive/negative trigger point, it's just moving the UI viewport
             ThunderscopeBridgeWriter bridge = new(new ThunderscopeBridgeOptions("ThunderScope.1", dataCapacityBytes), loggerFactory);
             taskLoop = Task.Factory.StartNew(() => Loop(logger, processingPool, memoryPool, bridge, cancelTokenSource.Token), TaskCreationOptions.LongRunning);
+            return bridge.GetIntraprocessReader();
         }
 
         public void Stop()

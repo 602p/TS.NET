@@ -24,7 +24,7 @@ namespace TS.NET
         private readonly IInterprocessSemaphoreWaiter dataRequestSemaphore;
         private readonly IInterprocessSemaphoreReleaser dataReadySemaphore;
         private bool dataRequested = false;
-        private bool acquiringRegionFilled = false;
+        private bool acquiringRegionFilled = true;
 
         public Span<byte> AcquiringRegion { get { return GetAcquiringRegion(); } }
         public ThunderscopeMonitoring Monitoring { get { return header.Monitoring; } }
@@ -149,6 +149,13 @@ namespace TS.NET
                 ThunderscopeMemoryAcquiringRegion.RegionB => new Span<byte>(dataPointer + regionLength, regionLength),
                 _ => throw new InvalidDataException("Enum value not handled, add enum value to switch")
             };
+        }
+
+        public IThunderscopeBridgeReader GetIntraprocessReader()
+        {
+            unsafe {
+                return new IntraprocessThunderscopeBridgeReader(options, basePointer, dataPointer);
+            }
         }
     }
 }

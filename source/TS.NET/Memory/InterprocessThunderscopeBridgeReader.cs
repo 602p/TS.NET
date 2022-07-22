@@ -9,7 +9,7 @@ using TS.NET.Memory.Windows;
 namespace TS.NET
 {
     // This is a shared memory-mapped file between processes, with only a single writer and a single reader with a header struct
-    public class ThunderscopeBridgeReader : IDisposable
+    public class InterprocessThunderscopeBridgeReader : IThunderscopeBridgeReader
     {
         private readonly ThunderscopeBridgeOptions options;
         private readonly ulong dataCapacityInBytes;
@@ -22,10 +22,10 @@ namespace TS.NET
         private readonly IInterprocessSemaphoreReleaser dataRequestSemaphore;
         private readonly IInterprocessSemaphoreWaiter dataReadySemaphore;
 
-        public Span<byte> AcquiredRegion { get { return GetAcquiredRegion(); } }
-
-        public unsafe ThunderscopeBridgeReader(ThunderscopeBridgeOptions options, ILoggerFactory loggerFactory)
+        public unsafe InterprocessThunderscopeBridgeReader(ThunderscopeBridgeOptions options, ILoggerFactory loggerFactory)
         {
+            throw new Exception("Don't use this!");
+
             this.options = options;
             dataCapacityInBytes = options.BridgeCapacityBytes - (uint)sizeof(ThunderscopeBridgeHeader);
             file = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
@@ -73,22 +73,16 @@ namespace TS.NET
             file.Dispose();
         }
 
-        public ThunderscopeConfiguration Configuration
+        public ThunderscopeConfiguration GetConfiguration()
         {
-            get
-            {
-                GetHeader();
-                return header.Configuration;
-            }
+            GetHeader();
+            return header.Configuration;
         }
 
-        public ThunderscopeMonitoring Monitoring
+        public ThunderscopeMonitoring GetMonitoring()
         {
-            get
-            {
-                GetHeader();
-                return header.Monitoring;
-            }
+            GetHeader();
+            return header.Monitoring;
         }
 
         public bool RequestAndWaitForData(int millisecondsTimeout)
@@ -117,15 +111,17 @@ namespace TS.NET
             return ptr;
         }
 
-        private unsafe Span<byte> GetAcquiredRegion()
+        public Span<byte> GetAcquiredRegion()
         {
-            int regionLength = (int)dataCapacityInBytes / 2;
-            return header.AcquiringRegion switch
-            {
-                ThunderscopeMemoryAcquiringRegion.RegionA => new Span<byte>(dataPointer + regionLength, regionLength),        // If acquiring region is Region A, return Region B
-                ThunderscopeMemoryAcquiringRegion.RegionB => new Span<byte>(dataPointer, regionLength),                       // If acquiring region is Region B, return Region A
-                _ => throw new InvalidDataException("Enum value not handled, add enum value to switch")
-            };
+            unsafe {
+                int regionLength = (int)dataCapacityInBytes / 2;
+                return header.AcquiringRegion switch
+                {
+                    ThunderscopeMemoryAcquiringRegion.RegionA => new Span<byte>(dataPointer + regionLength, regionLength),        // If acquiring region is Region A, return Region B
+                    ThunderscopeMemoryAcquiringRegion.RegionB => new Span<byte>(dataPointer, regionLength),                       // If acquiring region is Region B, return Region A
+                    _ => throw new InvalidDataException("Enum value not handled, add enum value to switch")
+                };
+            }
         }
     }
 }

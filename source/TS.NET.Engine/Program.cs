@@ -26,13 +26,13 @@ thunderscope.Open(devices[0]);
 BlockingChannel<ThunderscopeMemory> processingPool = new(bufferCount);
 
 ProcessingTask processingTask = new();
-processingTask.Start(loggerFactory, processingPool.Reader, memoryPool.Writer);
+IThunderscopeBridgeReader bridgeReader = processingTask.Start(loggerFactory, processingPool.Reader, memoryPool.Writer);
 
 InputTask inputTask = new();
 inputTask.Start(loggerFactory, thunderscope, memoryPool.Reader, processingPool.Writer);
 
 SocketTask socketTask = new();
-socketTask.Start(loggerFactory, thunderscope);
+socketTask.Start(loggerFactory, thunderscope, bridgeReader);
 
 SCPITask scpiTask = new();
 scpiTask.Start(loggerFactory, thunderscope);

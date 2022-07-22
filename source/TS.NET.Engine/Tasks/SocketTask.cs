@@ -32,12 +32,12 @@ namespace TS.NET.Engine
         private CancellationTokenSource? cancelTokenSource;
         private Task? taskLoop;
 
-        public void Start(ILoggerFactory loggerFactory, Thunderscope scope)
+        public void Start(ILoggerFactory loggerFactory, Thunderscope scope, IThunderscopeBridgeReader bridge)
         {
             var logger = loggerFactory.CreateLogger("SocketTask");
             cancelTokenSource = new CancellationTokenSource();
             uint bufferLength = 4 * 100 * 1000 * 1000;      //Maximum record length = 100M samples per channel
-            ThunderscopeBridgeReader bridge = new(new ThunderscopeBridgeOptions("ThunderScope.1", bufferLength), loggerFactory);
+            // ThunderscopeBridgeReader bridge = new(new ThunderscopeBridgeOptions("ThunderScope.1", bufferLength), loggerFactory);
             taskLoop = Task.Factory.StartNew(() => Loop(logger, scope, bridge, cancelTokenSource.Token), TaskCreationOptions.LongRunning);
         }
 
@@ -47,7 +47,7 @@ namespace TS.NET.Engine
             taskLoop?.Wait();
         }
 
-        private static void Loop(ILogger logger, Thunderscope scope, ThunderscopeBridgeReader bridge, CancellationToken cancelToken)
+        private static void Loop(ILogger logger, Thunderscope scope, IThunderscopeBridgeReader bridge, CancellationToken cancelToken)
         {
             Thread.CurrentThread.Name = "TS.NET Socket";
 
@@ -98,16 +98,11 @@ namespace TS.NET.Engine
 
                         if (bridge.RequestAndWaitForData(500))
                         {
-                            ulong channelLength = (ulong)bridge.Configuration.ChannelLength;
 
-                            uint viewportLength = 1000000;// (uint)upDownIndex.Value;
-                            if (viewportLength < 100)
-                                viewportLength = 100;
-                            if (viewportLength > 10000000)
-                                viewportLength = (uint)channelLength;
+                            var cfg = bridge.GetConfiguration();
+                            var data = bridge.GetAcquiredRegion();
 
-                            var cfg = bridge.Configuration;
-                            var data = bridge.AcquiredRegion;
+                            ulong channelLength = (ulong)cfg.ChannelLength;
 
                             WaveformHeader header = new() {
                                 seqnum = seqnum,
