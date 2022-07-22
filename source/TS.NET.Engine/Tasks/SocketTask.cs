@@ -134,7 +134,7 @@ namespace TS.NET.Engine
 
                                     chHeader.chNum = ch;
                                     chHeader.scale = (float)((float)tChannel.VoltsDiv / 1000f * 10f) / 255f;
-                                    chHeader.offset = (float)tChannel.VoltsOffset;
+                                    chHeader.offset = -(float)tChannel.VoltsOffset;
 
                                     clientSocket.Send(new ReadOnlySpan<byte>(&chHeader, sizeof(ChannelHeader)));
                                     clientSocket.Send(data.Slice(ch * (int)channelLength, (int)channelLength));

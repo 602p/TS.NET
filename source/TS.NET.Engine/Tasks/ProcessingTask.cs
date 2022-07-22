@@ -72,6 +72,7 @@ namespace TS.NET.Engine
                 DateTimeOffset startTime = DateTimeOffset.UtcNow;
                 uint dequeueCounter = 0;
                 uint oneSecondHoldoffCount = 0;
+                uint oneSecondDequeueCount = 0;
                 // HorizontalSumUtility.ToDivisor(horizontalSumLength)
                 Stopwatch oneSecond = Stopwatch.StartNew();
 
@@ -87,6 +88,7 @@ namespace TS.NET.Engine
                     // Add a zero-wait mechanism here that allows for configuration values to be updated
                     // (which will require updating many of the intermediate variables/buffers)
                     dequeueCounter++;
+                    oneSecondDequeueCount++;
                     int channelLength = config.ChannelLength;
                     switch (config.Channels)
                     {
@@ -191,9 +193,10 @@ namespace TS.NET.Engine
 
                     if (oneSecond.ElapsedMilliseconds >= 1000)
                     {
-                        logger.LogDebug($"Triggers/sec: {oneSecondHoldoffCount / (oneSecond.ElapsedMilliseconds * 0.001):F2}, dequeue count: {dequeueCounter}, trigger count: {bridge.Monitoring.TotalAcquisitions}, UI displayed triggers: {bridge.Monitoring.TotalAcquisitions - bridge.Monitoring.MissedAcquisitions}, UI dropped triggers: {bridge.Monitoring.MissedAcquisitions}");
+                        logger.LogDebug($"Triggers/sec: {oneSecondHoldoffCount / (oneSecond.ElapsedMilliseconds * 0.001):F2}, dequeues/sec: {oneSecondDequeueCount / (oneSecond.ElapsedMilliseconds * 0.001):F2}, dequeue count: {dequeueCounter}, trigger count: {bridge.Monitoring.TotalAcquisitions}, UI displayed triggers: {bridge.Monitoring.TotalAcquisitions - bridge.Monitoring.MissedAcquisitions}, UI dropped triggers: {bridge.Monitoring.MissedAcquisitions}");
                         oneSecond.Restart();
                         oneSecondHoldoffCount = 0;
+                        oneSecondDequeueCount = 0;
                     }
                 }
             }

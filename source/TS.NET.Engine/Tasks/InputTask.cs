@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
+using System.Diagnostics;
 
 namespace TS.NET.Engine
 {
@@ -9,11 +10,11 @@ namespace TS.NET.Engine
         private CancellationTokenSource? cancelTokenSource;
         private Task? taskLoop;
 
-        public void Start(ILoggerFactory loggerFactory, Thunderscope thunderscope, BlockingChannelReader<ThunderscopeMemory> memoryPool, BlockingChannelWriter<ThunderscopeMemory> processingPool)
+        public void Start(ILoggerFactory loggerFactory, Thunderscope scope, BlockingChannelReader<ThunderscopeMemory> memoryPool, BlockingChannelWriter<ThunderscopeMemory> processingPool)
         {
             var logger = loggerFactory.CreateLogger("InputTask");
             cancelTokenSource = new CancellationTokenSource();
-            taskLoop = Task.Factory.StartNew(() => Loop(logger, thunderscope, memoryPool, processingPool, cancelTokenSource.Token), TaskCreationOptions.LongRunning);
+            taskLoop = Task.Factory.StartNew(() => Loop(logger, scope, memoryPool, processingPool, cancelTokenSource.Token), TaskCreationOptions.LongRunning);
         }
 
         public void Stop()
@@ -22,7 +23,7 @@ namespace TS.NET.Engine
             taskLoop?.Wait();
         }
 
-        private static void Loop(ILogger logger, Thunderscope thunderscope, BlockingChannelReader<ThunderscopeMemory> memoryPool, BlockingChannelWriter<ThunderscopeMemory> processingPool, CancellationToken cancelToken)
+        private static void Loop(ILogger logger, Thunderscope scope, BlockingChannelReader<ThunderscopeMemory> memoryPool, BlockingChannelWriter<ThunderscopeMemory> processingPool, CancellationToken cancelToken)
         {
             try
             {
@@ -31,33 +32,66 @@ namespace TS.NET.Engine
 
                 logger.LogDebug($"Thread ID: {Thread.CurrentThread.ManagedThreadId}");
 
-                thunderscope.EnableChannel(0);
-                thunderscope.EnableChannel(1);
-                thunderscope.EnableChannel(2);
-                thunderscope.EnableChannel(3);
-                thunderscope.Start();
+                scope.EnableChannel(0);
+                scope.EnableChannel(1);
+                scope.EnableChannel(2);
+                scope.EnableChannel(3);
+                scope.Start();
+
+                Stopwatch oneSecond = Stopwatch.StartNew();
+                uint oneSecondEnqueueCount = 0;
+                uint enqueueCounter = 0;
 
                 while (true)
                 {
                     cancelToken.ThrowIfCancellationRequested();
 
-                    try
+                    var memory = memoryPool.Read();
+
+                    while (true)
                     {
-                        lock (thunderscope) {
-                            if (!thunderscope.Enabled) continue;
-                            var memory = memoryPool.Read();
-                            thunderscope.Read(memory);
-                            processingPool.Write(memory);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        if (ex.Message == "ReadFile - failed (1359)")
+                        try
                         {
-                            logger.LogError(ex, $"{nameof(InputTask)} error");
+                            scope.Read(memory);
+                            break;
+                        }
+                        catch (ThunderscopeMemoryOutOfMemoryException ex)
+                        {
+                            logger.LogWarning("Scope ran out of memory - reset buffer pointers and continue");
+                            scope.ResetBuffer();
                             continue;
                         }
-                        throw;
+                        catch (ThunderscopeFIFOOverflowException ex)
+                        {
+                            logger.LogWarning("Scope had FIFO overflow - ignore and continue");
+                            continue;
+                        }
+                        catch (ThunderscopeNotRunningException ex)
+                        {
+                            // logger.LogWarning("Tried to read from stopped scope");
+                            continue;
+                        }
+                        catch (Exception ex)
+                        {
+                            if (ex.Message == "ReadFile - failed (1359)")
+                            {
+                                logger.LogError(ex, $"{nameof(InputTask)} error");
+                                continue;
+                            }
+                            throw;
+                        }
+                    }
+
+                    oneSecondEnqueueCount++;
+                    enqueueCounter++;
+
+                    processingPool.Write(memory);
+
+                    if (oneSecond.ElapsedMilliseconds >= 1000)
+                    {
+                        logger.LogDebug($"Enqueues/sec: {oneSecondEnqueueCount / (oneSecond.ElapsedMilliseconds * 0.001):F2}, enqueue count: {enqueueCounter}");
+                        oneSecond.Restart();
+                        oneSecondEnqueueCount = 0;
                     }
                 }
             }

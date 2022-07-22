@@ -219,13 +219,14 @@ namespace TS.NET.Engine
 
                         offset = Math.Clamp(offset, -0.5, 0.5);
 
-                        lock (scope) {
-                            bool wasRunning = scope.Enabled;
-                            if (wasRunning) scope.Stop();
-                            scope.Channels[chNum].VoltsOffset = offset;
-                            scope.EnableChannel(chNum);
-                            if (wasRunning) scope.Start();
-                        }
+                        // This doesn't work as expected
+                        // lock (scope) {
+                        //     bool wasRunning = scope.Enabled;
+                        //     if (wasRunning) scope.Stop();
+                        //     scope.Channels[chNum].VoltsOffset = offset;
+                        //     scope.EnableChannel(chNum);
+                        //     if (wasRunning) scope.Start();
+                        // }
 
                         return null;
                     } else if (command == "RANGE" && hasArg) {

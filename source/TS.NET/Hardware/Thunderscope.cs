@@ -21,6 +21,18 @@ namespace TS.NET
         public ThunderscopeNotRunningException(String v) : base(v) {}
     }
 
+    public class ThunderscopeRecoverableOverflowException : ThunderscopeException {
+        public ThunderscopeRecoverableOverflowException(String v) : base(v) {}
+    }
+
+    public class ThunderscopeMemoryOutOfMemoryException : ThunderscopeRecoverableOverflowException {
+        public ThunderscopeMemoryOutOfMemoryException(String v) : base(v) {}
+    }
+
+    public class ThunderscopeFIFOOverflowException : ThunderscopeRecoverableOverflowException {
+        public ThunderscopeFIFOOverflowException(String v) : base(v) {}
+    }
+
     public record ThunderscopeDevice
     {
         public string DevicePath { get; set; }
@@ -460,7 +472,7 @@ namespace TS.NET
                 throw new Exception("Thunderscope - datamover error");
 
             if ((error_code & 1) > 0)
-                throw new Exception("Thunderscope - FIFO overflow");
+                throw new ThunderscopeFIFOOverflowException("Thunderscope - FIFO overflow");
 
             uint overflow_cycles = (transfer_counter >> 16) & 0x3FFF;
             if (overflow_cycles > 0)
@@ -475,9 +487,13 @@ namespace TS.NET
 
             ulong pages_available = hardwareState.BufferHead - hardwareState.BufferTail;
             if (pages_available >= hardwareState.RamSizePages)
-                throw new Exception("Thunderscope - memory full");
+                throw new ThunderscopeMemoryOutOfMemoryException("Thunderscope - memory full");
         }
 
-        
+        public void ResetBuffer() {
+            hardwareState.BufferHead = 0;
+            hardwareState.BufferTail = 0;
+            ConfigureDatamover(hardwareState);
+        }
     }
 }

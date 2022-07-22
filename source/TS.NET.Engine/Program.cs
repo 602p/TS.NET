@@ -9,8 +9,10 @@ using (Process p = Process.GetCurrentProcess())
 
 using var loggerFactory = LoggerFactory.Create(builder => builder.AddSimpleConsole(options => { options.SingleLine = true; options.TimestampFormat = "HH:mm:ss "; }).AddFilter(level => level >= LogLevel.Debug));
 
-BlockingChannel<ThunderscopeMemory> memoryPool = new();
-for (int i = 0; i < 120; i++)        // 120 = about 1 seconds worth of samples at 1GSPS
+int bufferCount = 512;
+
+BlockingChannel<ThunderscopeMemory> memoryPool = new(bufferCount);
+for (int i = 0; i < bufferCount; i++)        // 120 = about 1 seconds worth of samples at 1GSPS
     memoryPool.Writer.Write(new ThunderscopeMemory());
 
 Thread.Sleep(100);
@@ -21,7 +23,7 @@ if (devices.Count == 0)
 Thunderscope thunderscope = new Thunderscope();
 thunderscope.Open(devices[0]);
 
-BlockingChannel<ThunderscopeMemory> processingPool = new();
+BlockingChannel<ThunderscopeMemory> processingPool = new(bufferCount);
 
 ProcessingTask processingTask = new();
 processingTask.Start(loggerFactory, processingPool.Reader, memoryPool.Writer);
