@@ -22,7 +22,7 @@ namespace TS.NET
         public double VoltsOffset { get; set; } = 0;
         public int VoltsDiv { get; set; } = 100;
         public int Bandwidth { get; set; } = 350;
-        public ThunderscopeCoupling Coupling { get; set; }
+        public ThunderscopeCoupling Coupling { get; set; } = ThunderscopeCoupling.DC;
     }
 
     public enum ThunderscopeCoupling

@@ -106,12 +106,11 @@ namespace TS.NET.Engine
 
                             var cfg = bridge.Configuration;
                             var data = bridge.AcquiredRegion;
-                            // int offset = (int)((channelLength / 2) - (viewportLength / 2));
 
                             WaveformHeader header = new() {
                                 seqnum = seqnum,
                                 numChannels = 4,
-                                fsPerSample = 1000,
+                                fsPerSample = 1000000 * 4, // 1GS / 4 channels (?)
                                 triggerFs = 0,
                                 hwWaveformsPerSec = 1
                             };
@@ -132,7 +131,7 @@ namespace TS.NET.Engine
                                     ThunderscopeChannel tChannel = scope.Channels[ch];
 
                                     chHeader.chNum = ch;
-                                    chHeader.scale = (float)(tChannel.VoltsDiv / 1000 * 10) / 255f;
+                                    chHeader.scale = (float)((float)tChannel.VoltsDiv / 1000f * 10f) / 255f;
                                     chHeader.offset = (float)tChannel.VoltsOffset;
 
                                     clientSocket.Send(new ReadOnlySpan<byte>(&chHeader, sizeof(ChannelHeader)));
@@ -147,6 +146,8 @@ namespace TS.NET.Engine
 
                             break;
                         }
+
+                        logger.LogDebug("Remote wanted waveform but not ready");
                     }
                 }
             }

@@ -41,7 +41,7 @@ namespace TS.NET.Engine
                     Channels = Channels.Four,
                     ChannelLength = 10 * 1000000,//(ulong)ChannelLength.OneHundredM,
                     HorizontalSumLength = HorizontalSumLength.None,
-                    TriggerChannel = TriggerChannel.One,
+                    TriggerChannel = TriggerChannel.Two,
                     TriggerMode = TriggerMode.Normal
                 };
                 bridge.Configuration = config;
@@ -64,7 +64,7 @@ namespace TS.NET.Engine
 
                 Span<uint> triggerIndices = new uint[ThunderscopeMemory.Length / 1000];     // 1000 samples is the minimum holdoff
                 Span<uint> holdoffEndIndices = new uint[ThunderscopeMemory.Length / 1000];  // 1000 samples is the minimum holdoff
-                RisingEdgeTriggerAlt trigger = new(200, 100, (ulong)(config.ChannelLength / 2));
+                RisingEdgeTriggerAlt trigger = new(50, 5, (ulong)(config.ChannelLength / 2));
 
                 DateTimeOffset startTime = DateTimeOffset.UtcNow;
                 uint dequeueCounter = 0;
