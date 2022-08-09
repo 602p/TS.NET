@@ -22,7 +22,7 @@ namespace TS.NET
         private readonly IInterprocessSemaphoreReleaser dataRequestSemaphore;
         private readonly IInterprocessSemaphoreWaiter dataReadySemaphore;
 
-        public Span<byte> AcquiredRegion { get { return GetAcquiredRegion(); } }
+        public ReadOnlySpan<byte> AcquiredRegion { get { return GetAcquiredRegion(); } }
 
         public unsafe ThunderscopeBridgeReader(ThunderscopeBridgeOptions options, ILoggerFactory loggerFactory)
         {
@@ -126,13 +126,13 @@ namespace TS.NET
             return ptr;
         }
 
-        private unsafe Span<byte> GetAcquiredRegion()
+        private unsafe ReadOnlySpan<byte> GetAcquiredRegion()
         {
             int regionLength = (int)dataCapacityInBytes / 2;
             return header.AcquiringRegion switch
             {
-                ThunderscopeMemoryAcquiringRegion.RegionA => new Span<byte>(dataPointer + regionLength, regionLength),        // If acquiring region is Region A, return Region B
-                ThunderscopeMemoryAcquiringRegion.RegionB => new Span<byte>(dataPointer, regionLength),                       // If acquiring region is Region B, return Region A
+                ThunderscopeMemoryAcquiringRegion.RegionA => new ReadOnlySpan<byte>(dataPointer + regionLength, regionLength),        // If acquiring region is Region A, return Region B
+                ThunderscopeMemoryAcquiringRegion.RegionB => new ReadOnlySpan<byte>(dataPointer, regionLength),                       // If acquiring region is Region B, return Region A
                 _ => throw new InvalidDataException("Enum value not handled, add enum value to switch")
             };
         }

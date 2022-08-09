@@ -69,7 +69,8 @@ namespace TS.NET.Engine
                 logger.LogInformation("Starting data plane socket server at :5026");
                 listener.Listen(10);
                 clientSocket = listener.Accept();
-                clientSocket.NoDelay = true;
+                clientSocket.NoDelay = false;
+                clientSocket.SendBufferSize = 100000000 * 4;
                 logger.LogInformation("Client connected to data plane");
 
                 uint seqnum = 0;
@@ -126,9 +127,7 @@ namespace TS.NET.Engine
 
                             unsafe
                             {
-                                // TCP is a streaming protocol, not a packet protocol, so either send length first, or end with termination character.
-                                int count = sizeof(WaveformHeader) + 4 * (sizeof(ChannelHeader) + (int)channelLength);
-                                if (actuallySend) clientSocket.Send(BitConverter.GetBytes(count));
+                                // Length is implicit in header as 'numChannels'
                                 if (actuallySend) clientSocket.Send(new ReadOnlySpan<byte>(&header, sizeof(WaveformHeader)));
 
                                 fixed (byte* bridgeBuf = data, localBuf = localBuffer)
@@ -136,7 +135,7 @@ namespace TS.NET.Engine
                                     Buffer.MemoryCopy(bridgeBuf, localBuf, data.Length, (long)(channelLength * 4));
                                 }
 
-                                Span<byte> sendSpan = (Span<byte>)localBuffer;
+                                ReadOnlySpan<byte> sendSpan = (ReadOnlySpan<byte>)localBuffer;
 
                                 for (byte ch = 0; ch < 4; ch++)
                                 {
@@ -146,13 +145,15 @@ namespace TS.NET.Engine
                                     chHeader.scale = (float)(tChannel.VoltsDiv / 1000f * 10f) / 255f;
                                     chHeader.offset = -(float)tChannel.VoltsOffset;
 
+                                    // Length of this channel as 'depth'
                                     if (actuallySend) clientSocket.Send(new ReadOnlySpan<byte>(&chHeader, sizeof(ChannelHeader)));
                                     if (actuallySend) clientSocket.Send(sendSpan.Slice(ch * (int)channelLength, (int)channelLength));
                                 }
                             }
 
-                            Thread.Sleep(100);
-                            logger.LogDebug("Send!");
+                            logger.LogDebug("Sent!");
+
+                            Thread.Sleep(200);
 
                             seqnum++;
                             // string textInfo = JsonConvert.SerializeObject(cfg, Formatting.Indented, new Newtonsoft.Json.Converters.StringEnumConverter()); 
@@ -162,8 +163,9 @@ namespace TS.NET.Engine
                             break;
                         }
 
-                        logger.LogDebug("Remote wanted waveform but not ready, forcing trigger");
-                        processingRequestChannel.Write(new(ProcessingRequestCommand.ForceTrigger));
+                        // logger.LogDebug("Remote wanted waveform but not ready, forcing trigger");
+                        // processingRequestChannel.Write(new(ProcessingRequestCommand.ForceTrigger));
+                        // TODO: This doesn't seem like the behavior we want, unless in "AUTO" triggering mode.
                     }
                 }
             }

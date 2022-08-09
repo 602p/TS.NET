@@ -78,6 +78,7 @@ namespace TS.NET.Engine
                 DateTimeOffset startTime = DateTimeOffset.UtcNow;
                 uint dequeueCounter = 0;
                 uint oneSecondHoldoffCount = 0;
+                uint oneSecondDequeueCount = 0;
                 // HorizontalSumUtility.ToDivisor(horizontalSumLength)
                 Stopwatch oneSecond = Stopwatch.StartNew();
 
@@ -102,6 +103,7 @@ namespace TS.NET.Engine
 
                     InputDataDto processingDto = processingChannel.Read(cancelToken);
                     dequeueCounter++;
+                    oneSecondDequeueCount++;
                     int channelLength = processingConfig.ChannelLength;
                     switch (processingDto.Configuration.AdcChannels)
                     {
@@ -219,9 +221,11 @@ namespace TS.NET.Engine
 
                     if (oneSecond.ElapsedMilliseconds >= 1000)
                     {
-                        logger.LogDebug($"Triggers/sec: {oneSecondHoldoffCount / (oneSecond.ElapsedMilliseconds * 0.001):F2}, dequeue count: {dequeueCounter}, trigger count: {bridge.Monitoring.TotalAcquisitions}, UI displayed triggers: {bridge.Monitoring.TotalAcquisitions - bridge.Monitoring.MissedAcquisitions}, UI dropped triggers: {bridge.Monitoring.MissedAcquisitions}");
+                        logger.LogDebug($"Outstanding frames: {processingChannel.PeekAvailable()}, dequeues/sec: {oneSecondDequeueCount / (oneSecond.ElapsedMilliseconds * 0.001):F2}, dequeue count: {dequeueCounter}");
+                        logger.LogDebug($"Triggers/sec: {oneSecondHoldoffCount / (oneSecond.ElapsedMilliseconds * 0.001):F2}, trigger count: {bridge.Monitoring.TotalAcquisitions}, UI displayed triggers: {bridge.Monitoring.TotalAcquisitions - bridge.Monitoring.MissedAcquisitions}, UI dropped triggers: {bridge.Monitoring.MissedAcquisitions}");
                         oneSecond.Restart();
                         oneSecondHoldoffCount = 0;
+                        oneSecondDequeueCount = 0;
                     }
                 }
             }
