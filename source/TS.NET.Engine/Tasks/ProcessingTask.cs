@@ -102,6 +102,7 @@ namespace TS.NET.Engine
                     }
 
                     InputDataDto processingDto = processingChannel.Read(cancelToken);
+                    bridge.Configuration = processingDto.Configuration;
                     dequeueCounter++;
                     oneSecondDequeueCount++;
                     int channelLength = processingConfig.ChannelLength;

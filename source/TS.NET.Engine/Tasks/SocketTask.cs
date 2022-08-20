@@ -69,11 +69,16 @@ namespace TS.NET.Engine
                 logger.LogInformation("Starting data plane socket server at :5026");
                 listener.Listen(10);
                 clientSocket = listener.Accept();
-                clientSocket.NoDelay = false;
-                clientSocket.SendBufferSize = 100000000 * 4;
+                clientSocket.NoDelay = true;
                 logger.LogInformation("Client connected to data plane");
 
                 uint seqnum = 0;
+
+                var cfg = bridge.Configuration;
+                var processingCfg = bridge.Processing;//.GetConfiguration();
+                ulong channelLength = (ulong)processingCfg.ChannelLength;
+
+                clientSocket.NoDelay = true;
 
                 while (true)
                 {
@@ -90,18 +95,13 @@ namespace TS.NET.Engine
 
                     logger.LogDebug("Got request for waveform...");
 
-                    var cfg = bridge.Configuration;
-                    var processingCfg = bridge.Processing;//.GetConfiguration();
-                    ulong channelLength = (ulong)processingCfg.ChannelLength;
-
-                    byte[] localBuffer = new byte[channelLength * 4];
-
                     while (true)
                     {
                         cancelToken.ThrowIfCancellationRequested();
 
                         if (bridge.RequestAndWaitForData(500))
                         {
+                            logger.LogDebug("Send waveform...");
                             var data = bridge.AcquiredRegion;
 
                             WaveformHeader header = new()
@@ -123,49 +123,37 @@ namespace TS.NET.Engine
                                 clipping = 0
                             };
 
-                            bool actuallySend = true;
-
                             unsafe
                             {
-                                // Length is implicit in header as 'numChannels'
-                                if (actuallySend) clientSocket.Send(new ReadOnlySpan<byte>(&header, sizeof(WaveformHeader)));
-
-                                fixed (byte* bridgeBuf = data, localBuf = localBuffer)
-                                {
-                                    Buffer.MemoryCopy(bridgeBuf, localBuf, data.Length, (long)(channelLength * 4));
-                                }
-
-                                ReadOnlySpan<byte> sendSpan = (ReadOnlySpan<byte>)localBuffer;
+                                clientSocket.Send(new ReadOnlySpan<byte>(&header, sizeof(WaveformHeader)));
 
                                 for (byte ch = 0; ch < 4; ch++)
                                 {
                                     ThunderscopeChannel tChannel = cfg.GetChannel(ch);
 
                                     chHeader.chNum = ch;
-                                    chHeader.scale = (float)(tChannel.VoltsDiv / 1000f * 10f) / 255f;
+                                    chHeader.scale = (((float)tChannel.VoltsDiv) / 1000f * 10f) / 255f;
                                     chHeader.offset = -(float)tChannel.VoltsOffset;
 
+                                    logger.LogDebug($"ch {ch}: VoltsDiv={tChannel.VoltsDiv} -> .scale={chHeader.scale}, VoltsOffset={tChannel.VoltsOffset}");
+
                                     // Length of this channel as 'depth'
-                                    if (actuallySend) clientSocket.Send(new ReadOnlySpan<byte>(&chHeader, sizeof(ChannelHeader)));
-                                    if (actuallySend) clientSocket.Send(sendSpan.Slice(ch * (int)channelLength, (int)channelLength));
+                                    clientSocket.Send(new ReadOnlySpan<byte>(&chHeader, sizeof(ChannelHeader)));
+                                    clientSocket.Send(data.Slice(ch * (int)channelLength, (int)channelLength));
                                 }
                             }
 
-                            logger.LogDebug("Sent!");
-
-                            Thread.Sleep(200);
-
                             seqnum++;
-                            // string textInfo = JsonConvert.SerializeObject(cfg, Formatting.Indented, new Newtonsoft.Json.Converters.StringEnumConverter()); 
-                            // logger.LogInfo(textInfo);
-                            // Thread.Sleep(10);
 
                             break;
                         }
 
-                        // logger.LogDebug("Remote wanted waveform but not ready, forcing trigger");
-                        // processingRequestChannel.Write(new(ProcessingRequestCommand.ForceTrigger));
-                        // TODO: This doesn't seem like the behavior we want, unless in "AUTO" triggering mode.
+                        if (false)
+                        {
+                            logger.LogDebug("Remote wanted waveform but not ready -- forcing trigger");
+                            processingRequestChannel.Write(new(ProcessingRequestCommand.ForceTrigger));
+                            // TODO: This doesn't seem like the behavior we want, unless in "AUTO" triggering mode.
+                        }
                     }
                 }
             }
