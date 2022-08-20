@@ -69,9 +69,15 @@ namespace TS.NET.Engine
                         }
                         else if (request is HardwareSetOffsetRequest)
                         {
-                            var (channel, voltage) = (HardwareSetOffsetRequest)request;
-                            logger.LogDebug($"Set offset request: ch {channel} voltage {voltage} (ignore)");
-                            // configuration.GetChannel(channel).VoltsOffset = voltage;
+                            var (chNum, voltage) = (HardwareSetOffsetRequest)request;
+                            logger.LogDebug($"Set offset request: ch {chNum} voltage {voltage}");
+                            ThunderscopeChannel ch = configuration.GetChannel(chNum);
+                            ch.VoltsOffset = voltage;
+                            configuration.SetChannel(chNum, ch);
+
+                            thunderscope.EnableChannel(chNum);
+
+                            // logger.LogDebug($"After set report voltage {configuration.GetChannel(chNum).VoltsOffset}");
                         }
                         else
                         {

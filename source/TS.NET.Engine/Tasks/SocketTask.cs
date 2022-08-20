@@ -74,7 +74,6 @@ namespace TS.NET.Engine
 
                 uint seqnum = 0;
 
-                var cfg = bridge.Configuration;
                 var processingCfg = bridge.Processing;//.GetConfiguration();
                 ulong channelLength = (ulong)processingCfg.ChannelLength;
 
@@ -102,6 +101,7 @@ namespace TS.NET.Engine
                         if (bridge.RequestAndWaitForData(500))
                         {
                             logger.LogDebug("Send waveform...");
+                            var cfg = bridge.Configuration;
                             var data = bridge.AcquiredRegion;
 
                             WaveformHeader header = new()
@@ -133,7 +133,7 @@ namespace TS.NET.Engine
 
                                     chHeader.chNum = ch;
                                     chHeader.scale = (((float)tChannel.VoltsDiv) / 1000f * 10f) / 255f;
-                                    chHeader.offset = -(float)tChannel.VoltsOffset;
+                                    chHeader.offset = (float)tChannel.VoltsOffset;
 
                                     // TODO: What is up with samples in the 245-255 range that seem to be spurious or maybe a representation of negative voltages?
 
