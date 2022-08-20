@@ -170,7 +170,7 @@ namespace TS.NET.Engine
                     {
                         // Start
                         logger.LogDebug("Start acquisition");
-                        hardwareRequestChannel.Write(new(HardwareRequestCommand.Start));
+                        hardwareRequestChannel.Write(new HardwareStartRequest());
                         hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         return null;
                     }
@@ -178,7 +178,7 @@ namespace TS.NET.Engine
                     {
                         // Stop
                         logger.LogDebug("Stop acquisition");
-                        hardwareRequestChannel.Write(new(HardwareRequestCommand.Stop));
+                        hardwareRequestChannel.Write(new HardwareStopRequest());
                         hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         return null;
                     }
@@ -272,6 +272,9 @@ namespace TS.NET.Engine
                         logger.LogDebug($"Set ch {chNum} offset to {offset}V");
 
                         offset = Math.Clamp(offset, -0.5, 0.5);
+
+                        hardwareRequestChannel.Write(new HardwareSetOffsetRequest(chNum, offset));
+                        hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
 
                         // This doesn't work as expected
                         // lock (scope) {

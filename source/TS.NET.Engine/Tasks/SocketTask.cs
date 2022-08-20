@@ -135,6 +135,8 @@ namespace TS.NET.Engine
                                     chHeader.scale = (((float)tChannel.VoltsDiv) / 1000f * 10f) / 255f;
                                     chHeader.offset = -(float)tChannel.VoltsOffset;
 
+                                    // TODO: What is up with samples in the 245-255 range that seem to be spurious or maybe a representation of negative voltages?
+
                                     logger.LogDebug($"ch {ch}: VoltsDiv={tChannel.VoltsDiv} -> .scale={chHeader.scale}, VoltsOffset={tChannel.VoltsOffset}");
 
                                     // Length of this channel as 'depth'

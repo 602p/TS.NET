@@ -59,9 +59,27 @@ namespace TS.NET.Engine
                     if (hardwareRequestChannel.TryRead(out var request))
                     {
                         // Do configuration update, pausing acquisition if necessary (TBD)
+                        if (request is HardwareStartRequest)
+                        {
+                            logger.LogDebug("Start request (ignore)");
+                        }
+                        else if (request is HardwareStopRequest)
+                        {
+                            logger.LogDebug("Stop request (ignore)");
+                        }
+                        else if (request is HardwareSetOffsetRequest)
+                        {
+                            var (channel, voltage) = (HardwareSetOffsetRequest)request;
+                            logger.LogDebug($"Set offset request: ch {channel} voltage {voltage} (ignore)");
+                            // configuration.GetChannel(channel).VoltsOffset = voltage;
+                        }
+                        else
+                        {
+                            logger.LogWarning($"Unknown HardwareRequestDto: {request}");
+                        }
 
                         // Signal back to the sender that config update happened.
-                        hardwareResponseChannel.TryWrite(new HardwareResponseDto(request.Command));
+                        hardwareResponseChannel.TryWrite(new HardwareResponseDto(request));
                     }
 
                     var memory = inputChannel.Read();
