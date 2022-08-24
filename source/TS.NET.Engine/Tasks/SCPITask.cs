@@ -246,16 +246,14 @@ namespace TS.NET.Engine
                 {
                     int chNum = subject[0] - '0';
 
-                    if (command == "ON")
+                    if (command == "ON" || command == "OFF")
                     {
-                        // Turn on
-                        logger.LogDebug($"Enable ch {chNum}");
-                        return null;
-                    }
-                    else if (command == "OFF")
-                    {
-                        // Turn off
-                        logger.LogDebug($"Disable ch {chNum}");
+                        // Turn on/off
+                        logger.LogDebug($"Set ch {chNum} enabled {command=="ON"}");
+
+                        hardwareRequestChannel.Write(new HardwareSetEnabledRequest(chNum, command=="ON"));
+                        hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+
                         return null;
                     }
                     else if (command == "COUP" && hasArg)
@@ -263,6 +261,10 @@ namespace TS.NET.Engine
                         String coup = argument;
                         // Set coupling
                         logger.LogDebug($"Set ch {chNum} coupling to {coup}");
+
+                        hardwareRequestChannel.Write(new HardwareSetCouplingRequest(chNum, (coup=="DC"?ThunderscopeCoupling.DC:ThunderscopeCoupling.AC)));
+                        hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+
                         return null;
                     }
                     else if (command == "OFFS" && hasArg)
@@ -292,6 +294,12 @@ namespace TS.NET.Engine
                         double range = Convert.ToDouble(argument);
                         // Set range
                         logger.LogDebug($"Set ch {chNum} range to {range}V");
+
+                        int computedRange = 100; // TODO: Compute nearest hw range from requested range
+
+                        hardwareRequestChannel.Write(new HardwareSetVdivRequest(chNum, computedRange));
+                        hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+
                         return null;
                     }
                 }

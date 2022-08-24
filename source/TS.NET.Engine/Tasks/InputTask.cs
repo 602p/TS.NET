@@ -67,17 +67,48 @@ namespace TS.NET.Engine
                         {
                             logger.LogDebug("Stop request (ignore)");
                         }
-                        else if (request is HardwareSetOffsetRequest)
+                        else if (request is HardwareConfigureChannelDto)
                         {
-                            var (chNum, voltage) = (HardwareSetOffsetRequest)request;
-                            logger.LogDebug($"Set offset request: ch {chNum} voltage {voltage}");
+                            var chNum = ((HardwareConfigureChannelDto)request).Channel;
                             ThunderscopeChannel ch = configuration.GetChannel(chNum);
-                            ch.VoltsOffset = voltage;
+
+                            if (request is HardwareSetOffsetRequest)
+                            {
+                                var voltage = ((HardwareSetOffsetRequest)request).Offset;
+                                logger.LogDebug($"Set offset request: ch {chNum} voltage {voltage}");
+                                ch.VoltsOffset = voltage;
+                            }
+                            else if (request is HardwareSetVdivRequest)
+                            {
+                                var vdiv = ((HardwareSetVdivRequest)request).VoltsDiv;
+                                logger.LogDebug($"Set vdiv request: ch {chNum} div {vdiv}");
+                                ch.VoltsDiv = vdiv;
+                            }
+                            else if (request is HardwareSetBandwidthRequest)
+                            {
+                                var bw = ((HardwareSetBandwidthRequest)request).Bandwidth;
+                                logger.LogDebug($"Set bw request: ch {chNum} bw {bw}");
+                                ch.Bandwidth = bw;
+                            }
+                            else if (request is HardwareSetCouplingRequest)
+                            {
+                                var coup = ((HardwareSetCouplingRequest)request).Coupling;
+                                logger.LogDebug($"Set coup request: ch {chNum} coup {coup}");
+                                ch.Coupling = coup;
+                            }
+                            else if (request is HardwareSetEnabledRequest)
+                            {
+                                var enabled = ((HardwareSetEnabledRequest)request).Enabled;
+                                logger.LogDebug($"Set enabled request: ch {chNum} enabled {enabled}");
+                                ch.Enabled = enabled;
+                            }
+                            else
+                            {
+                                logger.LogWarning($"Unknown HardwareConfigureChannelDto: {request}");
+                            }
+
                             configuration.SetChannel(chNum, ch);
-
                             thunderscope.EnableChannel(chNum);
-
-                            // logger.LogDebug($"After set report voltage {configuration.GetChannel(chNum).VoltsOffset}");
                         }
                         else
                         {
