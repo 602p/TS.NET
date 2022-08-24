@@ -314,9 +314,21 @@ namespace TS.NET.Engine
                     {
                         double range = Convert.ToDouble(argument);
                         // Set range
-                        logger.LogDebug($"Set ch {chNum} range to {range}V");
+                        
+                        int[] available_mv = { 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000 };
 
-                        int computedRange = 100; // TODO: Compute nearest hw range from requested range
+                        int range_mv = (int)((range * 1000d) / 10d);
+                        int computedRange = available_mv[0];
+
+                        for (int i = available_mv.Length - 1; i >= 0; i--)
+                        {
+                            if (available_mv[i] > computedRange && available_mv[i] <= range_mv)
+                            {
+                                computedRange = available_mv[i];
+                            }
+                        }
+
+                        logger.LogDebug($"Set ch {chNum} range to {range}V -> {range_mv}mV -> {computedRange} computed mV");
 
                         hardwareRequestChannel.Write(new HardwareSetVdivRequest(chNum, computedRange));
                         hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.

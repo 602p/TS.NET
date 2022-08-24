@@ -59,8 +59,9 @@ namespace TS.NET.Engine
                     if (hardwareRequestChannel.TryRead(out var request))
                     {
                         thunderscope.Stop();
+                        // TODO: Batch multiple pending hardware requests into a single stop/start
 
-                        // Do configuration update, pausing acquisition if necessary (TBD)
+                        // Do configuration update, pausing acquisition if necessary
                         if (request is HardwareStartRequest)
                         {
                             logger.LogDebug("Start request (ignore)");
@@ -110,6 +111,7 @@ namespace TS.NET.Engine
                             }
 
                             configuration.SetChannel(chNum, ch);
+                            ConfigureFromObject(thunderscope, configuration);
                             thunderscope.EnableChannel(chNum);
                         }
                         else
@@ -227,12 +229,22 @@ namespace TS.NET.Engine
                 },
             };
 
+            ConfigureFromObject(thunderscope, configuration);
+
             thunderscope.EnableChannel(0);
             thunderscope.EnableChannel(1);
             thunderscope.EnableChannel(2);
             thunderscope.EnableChannel(3);
 
             return configuration;
+        }
+
+        private static void ConfigureFromObject(Thunderscope thunderscope, ThunderscopeConfiguration configuration)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                thunderscope.Channels[i] = configuration.GetChannel(i);
+            }
         }
     }
 }
