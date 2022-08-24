@@ -87,6 +87,7 @@ namespace TS.NET.Engine
                 var circularBuffer3 = new ChannelCircularAlignedBuffer((uint)processingConfig.ChannelLength + ThunderscopeMemory.Length);
                 var circularBuffer4 = new ChannelCircularAlignedBuffer((uint)processingConfig.ChannelLength + ThunderscopeMemory.Length);
 
+
                 bool forceTrigger = false;
 
                 while (true)
@@ -96,9 +97,40 @@ namespace TS.NET.Engine
                     // Check for processing requests
                     if (processingRequestChannel.TryRead(out var request))
                     {
-                        if (request.Command == ProcessingRequestCommand.ForceTrigger)
+                        if (request is ProcessingForceTriggerDto)
+                        {
                             forceTrigger = true;
-                        processingResponseChannel.Write(new ProcessingResponseDto(request.Command));
+                        }
+                        else if (request is ProcessingSetDepthDto)
+                        {
+                            var depth = ((ProcessingSetDepthDto)request).Samples;
+                        }
+                        else if (request is ProcessingSetRateDto)
+                        {
+                            var rate = ((ProcessingSetRateDto)request).SamplingHz;
+                        }
+                        else if (request is ProcessingSetTriggerSourceDto)
+                        {
+                            var chNum = ((ProcessingSetTriggerSourceDto)request).Channel;
+                        }
+                        else if (request is ProcessingSetTriggerDelayDto)
+                        {
+                            var fs = ((ProcessingSetTriggerDelayDto)request).Femtoseconds;
+                        }
+                        else if (request is ProcessingSetTriggerLevelDto)
+                        {
+                            var level = ((ProcessingSetTriggerLevelDto)request).Level;
+                        }
+                        else if (request is ProcessingSetTriggerEdgeDirectionDto)
+                        {
+                            // var edges = ((ProcessingSetTriggerEdgeDirectionDto)request).Edges;
+                        }
+                        else
+                        {
+                            logger.LogWarning($"Unknown ProcessingRequestDto: {request}");
+                        }
+
+                        processingResponseChannel.Write(new ProcessingResponseDto(request));
                     }
 
                     InputDataDto processingDto = processingChannel.Read(cancelToken);

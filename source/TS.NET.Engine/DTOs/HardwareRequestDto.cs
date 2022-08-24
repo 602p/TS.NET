@@ -6,7 +6,7 @@ namespace TS.NET.Engine
     public record HardwareStartRequest() : HardwareRequestDto;
     public record HardwareStopRequest() : HardwareRequestDto;
 
-    public record HardwareConfigureChannelDto(int Channel): HardwareRequestDto;
+    public abstract record HardwareConfigureChannelDto(int Channel): HardwareRequestDto;
     public record HardwareSetEnabledRequest(int Channel, bool Enabled) : HardwareConfigureChannelDto(Channel);
     public record HardwareSetOffsetRequest(int Channel, double Offset) : HardwareConfigureChannelDto(Channel);
     public record HardwareSetVdivRequest(int Channel, int VoltsDiv) : HardwareConfigureChannelDto(Channel);

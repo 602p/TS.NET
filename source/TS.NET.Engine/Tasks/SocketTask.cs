@@ -153,7 +153,7 @@ namespace TS.NET.Engine
                         if (false)
                         {
                             logger.LogDebug("Remote wanted waveform but not ready -- forcing trigger");
-                            processingRequestChannel.Write(new(ProcessingRequestCommand.ForceTrigger));
+                            processingRequestChannel.Write(new ProcessingForceTriggerDto());
                             // TODO: This doesn't seem like the behavior we want, unless in "AUTO" triggering mode.
                         }
                     }

@@ -58,6 +58,8 @@ namespace TS.NET.Engine
                     // Check for configuration requests
                     if (hardwareRequestChannel.TryRead(out var request))
                     {
+                        thunderscope.Stop();
+
                         // Do configuration update, pausing acquisition if necessary (TBD)
                         if (request is HardwareStartRequest)
                         {
@@ -117,6 +119,8 @@ namespace TS.NET.Engine
 
                         // Signal back to the sender that config update happened.
                         hardwareResponseChannel.TryWrite(new HardwareResponseDto(request));
+
+                        thunderscope.Start();
                     }
 
                     var memory = inputChannel.Read();
