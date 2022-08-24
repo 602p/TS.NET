@@ -170,16 +170,20 @@ namespace TS.NET.Engine
                     {
                         // Start
                         logger.LogDebug("Start acquisition");
+
                         hardwareRequestChannel.Write(new HardwareStartRequest());
                         hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+                        
                         return null;
                     }
                     else if (command == "STOP")
                     {
                         // Stop
                         logger.LogDebug("Stop acquisition");
+
                         hardwareRequestChannel.Write(new HardwareStopRequest());
                         hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+                        
                         return null;
                     }
                     else if (command == "SINGLE")
@@ -192,8 +196,10 @@ namespace TS.NET.Engine
                     {
                         // force capture
                         logger.LogDebug("Force acquisition");
+
                         processingRequestChannel.Write(new ProcessingForceTriggerDto());
                         processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+                        
                         return null;
                     }
                     else if (command == "DEPTH" && hasArg)
@@ -201,6 +207,7 @@ namespace TS.NET.Engine
                         long depth = Convert.ToInt64(argument);
                         // Set depth
                         logger.LogDebug($"Set depth to {depth}S");
+
                         processingRequestChannel.Write(new ProcessingSetDepthDto(depth));
                         processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
@@ -211,6 +218,7 @@ namespace TS.NET.Engine
                         long rate = Convert.ToInt64(argument);
                         // Set rate
                         logger.LogDebug($"Set rate to {rate}Hz");
+
                         processingRequestChannel.Write(new ProcessingSetRateDto(rate));
                         processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
@@ -224,6 +232,7 @@ namespace TS.NET.Engine
                         double level = Convert.ToDouble(argument);
                         // Set trig level
                         logger.LogDebug($"Set trigger level to {level}V");
+
                         processingRequestChannel.Write(new ProcessingSetTriggerLevelDto(level));
                         processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
@@ -234,6 +243,7 @@ namespace TS.NET.Engine
                         int source = Convert.ToInt32(argument);
                         // Set trig channel
                         logger.LogDebug($"Set trigger source to ch {source}");
+
                         processingRequestChannel.Write(new ProcessingSetTriggerSourceDto(source));
                         processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
@@ -244,6 +254,7 @@ namespace TS.NET.Engine
                         long delay = Convert.ToInt64(argument);
                         // Set trig delay
                         logger.LogDebug($"Set trigger delay to {delay}fs");
+
                         processingRequestChannel.Write(new ProcessingSetTriggerDelayDto(delay));
                         processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
@@ -254,6 +265,7 @@ namespace TS.NET.Engine
                         String dir = argument;
                         // Set direction
                         logger.LogDebug($"Set [edge] trigger direction to {dir}");
+
                         processingRequestChannel.Write(new ProcessingSetTriggerEdgeDirectionDto(/*dir*/));
                         processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
@@ -295,15 +307,6 @@ namespace TS.NET.Engine
 
                         hardwareRequestChannel.Write(new HardwareSetOffsetRequest(chNum, offset));
                         hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
-
-                        // This doesn't work as expected
-                        // lock (scope) {
-                        //     bool wasRunning = scope.Enabled;
-                        //     if (wasRunning) scope.Stop();
-                        //     scope.Channels[chNum].VoltsOffset = offset;
-                        //     scope.EnableChannel(chNum);
-                        //     if (wasRunning) scope.Start();
-                        // }
 
                         return null;
                     }
