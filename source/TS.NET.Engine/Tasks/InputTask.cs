@@ -164,7 +164,7 @@ namespace TS.NET.Engine
 
                     processingChannel.Write(new InputDataDto(configuration, memory), cancelToken);
 
-                    if (oneSecond.ElapsedMilliseconds >= 1000)
+                    if (oneSecond.ElapsedMilliseconds >= 10000)
                     {
                         logger.LogDebug($"Enqueues/sec: {oneSecondEnqueueCount / (oneSecond.ElapsedMilliseconds * 0.001):F2}, enqueue count: {enqueueCounter}");
                         oneSecond.Restart();

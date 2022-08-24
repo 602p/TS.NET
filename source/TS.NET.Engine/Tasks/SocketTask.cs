@@ -92,7 +92,7 @@ namespace TS.NET.Engine
                         if (numByte != 0) break;
                     }
 
-                    logger.LogDebug("Got request for waveform...");
+                    // logger.LogDebug("Got request for waveform...");
 
                     while (true)
                     {
@@ -100,7 +100,7 @@ namespace TS.NET.Engine
 
                         if (bridge.RequestAndWaitForData(500))
                         {
-                            logger.LogDebug("Send waveform...");
+                            // logger.LogDebug("Send waveform...");
                             var cfg = bridge.Configuration;
                             var data = bridge.AcquiredRegion;
 
@@ -137,7 +137,7 @@ namespace TS.NET.Engine
 
                                     // TODO: What is up with samples in the 245-255 range that seem to be spurious or maybe a representation of negative voltages?
 
-                                    logger.LogDebug($"ch {ch}: VoltsDiv={tChannel.VoltsDiv} -> .scale={chHeader.scale}, VoltsOffset={tChannel.VoltsOffset}");
+                                    logger.LogDebug($"ch {ch}: VoltsDiv={tChannel.VoltsDiv} -> .scale={chHeader.scale}, VoltsOffset={tChannel.VoltsOffset}, Coupling={tChannel.Coupling}");
 
                                     // Length of this channel as 'depth'
                                     clientSocket.Send(new ReadOnlySpan<byte>(&chHeader, sizeof(ChannelHeader)));

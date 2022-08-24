@@ -280,7 +280,7 @@ namespace TS.NET.Engine
                         // Set coupling
                         logger.LogDebug($"Set ch {chNum} coupling to {coup}");
 
-                        hardwareRequestChannel.Write(new HardwareSetCouplingRequest(chNum, (coup=="DC"?ThunderscopeCoupling.DC:ThunderscopeCoupling.AC)));
+                        hardwareRequestChannel.Write(new HardwareSetCouplingRequest(chNum, (coup=="DC1M"?ThunderscopeCoupling.DC:ThunderscopeCoupling.AC)));
                         hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
 
                         return null;

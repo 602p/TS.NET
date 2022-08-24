@@ -252,7 +252,7 @@ namespace TS.NET.Engine
                             break;
                     }
 
-                    if (oneSecond.ElapsedMilliseconds >= 1000)
+                    if (oneSecond.ElapsedMilliseconds >= 10000)
                     {
                         logger.LogDebug($"Outstanding frames: {processingChannel.PeekAvailable()}, dequeues/sec: {oneSecondDequeueCount / (oneSecond.ElapsedMilliseconds * 0.001):F2}, dequeue count: {dequeueCounter}");
                         logger.LogDebug($"Triggers/sec: {oneSecondHoldoffCount / (oneSecond.ElapsedMilliseconds * 0.001):F2}, trigger count: {bridge.Monitoring.TotalAcquisitions}, UI displayed triggers: {bridge.Monitoring.TotalAcquisitions - bridge.Monitoring.MissedAcquisitions}, UI dropped triggers: {bridge.Monitoring.MissedAcquisitions}");
