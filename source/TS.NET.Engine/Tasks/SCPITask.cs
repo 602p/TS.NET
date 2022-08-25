@@ -171,7 +171,7 @@ namespace TS.NET.Engine
                         // Start
                         logger.LogDebug("Start acquisition");
 
-                        hardwareRequestChannel.Write(new HardwareStartRequest());
+                        processingRequestChannel.Write(new ProcessingStartTriggerDto(false, false));
                         // hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
                         return null;
@@ -181,7 +181,7 @@ namespace TS.NET.Engine
                         // Stop
                         logger.LogDebug("Stop acquisition");
 
-                        hardwareRequestChannel.Write(new HardwareStopRequest());
+                        processingRequestChannel.Write(new ProcessingStartTriggerDto(true, true));
                         // hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
                         return null;
@@ -190,6 +190,9 @@ namespace TS.NET.Engine
                     {
                         // Single capture
                         logger.LogDebug("Single acquisition");
+
+                        processingRequestChannel.Write(new ProcessingStartTriggerDto(false, true));
+
                         return null;
                     }
                     else if (command == "FORCE")
@@ -198,7 +201,7 @@ namespace TS.NET.Engine
                         logger.LogDebug("Force acquisition");
 
                         processingRequestChannel.Write(new ProcessingForceTriggerDto());
-                        processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+                        // processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
                         return null;
                     }
@@ -209,7 +212,7 @@ namespace TS.NET.Engine
                         logger.LogDebug($"Set depth to {depth}S");
 
                         processingRequestChannel.Write(new ProcessingSetDepthDto(depth));
-                        processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+                        // processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
                         return null;
                     }
@@ -220,7 +223,7 @@ namespace TS.NET.Engine
                         logger.LogDebug($"Set rate to {rate}Hz");
 
                         processingRequestChannel.Write(new ProcessingSetRateDto(rate));
-                        processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+                        // processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
                         return null;
                     }
@@ -234,18 +237,22 @@ namespace TS.NET.Engine
                         logger.LogDebug($"Set trigger level to {level}V");
 
                         processingRequestChannel.Write(new ProcessingSetTriggerLevelDto(level));
-                        processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+                        // processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
                         return null;
                     }
                     else if (command == "SOU" && hasArg)
                     {
                         int source = Convert.ToInt32(argument);
+
+                        if (source < 0 || source > 3)
+                            source = 0;
+
                         // Set trig channel
                         logger.LogDebug($"Set trigger source to ch {source}");
 
-                        processingRequestChannel.Write(new ProcessingSetTriggerSourceDto(source));
-                        processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+                        processingRequestChannel.Write(new ProcessingSetTriggerSourceDto((TriggerChannel)(source+1)));
+                        // processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
                         return null;
                     }
@@ -256,7 +263,7 @@ namespace TS.NET.Engine
                         logger.LogDebug($"Set trigger delay to {delay}fs");
 
                         processingRequestChannel.Write(new ProcessingSetTriggerDelayDto(delay));
-                        processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+                        // processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
                         return null;
                     }
@@ -267,7 +274,7 @@ namespace TS.NET.Engine
                         logger.LogDebug($"Set [edge] trigger direction to {dir}");
 
                         processingRequestChannel.Write(new ProcessingSetTriggerEdgeDirectionDto(/*dir*/));
-                        processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+                        // processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
                         return null;
                     }
