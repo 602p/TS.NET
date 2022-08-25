@@ -56,72 +56,79 @@ namespace TS.NET.Engine
                     cancelToken.ThrowIfCancellationRequested();
 
                     // Check for configuration requests
-                    if (hardwareRequestChannel.TryRead(out var request))
+                    if (hardwareRequestChannel.PeekAvailable() != 0)
                     {
+                        logger.LogDebug("Stop acquisition and process commands...");
                         thunderscope.Stop();
-                        // TODO: Batch multiple pending hardware requests into a single stop/start
 
-                        // Do configuration update, pausing acquisition if necessary
-                        if (request is HardwareStartRequest)
+                        while (hardwareRequestChannel.TryRead(out var request))
                         {
-                            logger.LogDebug("Start request (ignore)");
-                        }
-                        else if (request is HardwareStopRequest)
-                        {
-                            logger.LogDebug("Stop request (ignore)");
-                        }
-                        else if (request is HardwareConfigureChannelDto)
-                        {
-                            var chNum = ((HardwareConfigureChannelDto)request).Channel;
-                            ThunderscopeChannel ch = configuration.GetChannel(chNum);
+                            // Do configuration update, pausing acquisition if necessary
+                            if (request is HardwareStartRequest)
+                            {
+                                logger.LogDebug("Start request (ignore)");
+                            }
+                            else if (request is HardwareStopRequest)
+                            {
+                                logger.LogDebug("Stop request (ignore)");
+                            }
+                            else if (request is HardwareConfigureChannelDto)
+                            {
+                                var chNum = ((HardwareConfigureChannelDto)request).Channel;
+                                ThunderscopeChannel ch = configuration.GetChannel(chNum);
 
-                            if (request is HardwareSetOffsetRequest)
-                            {
-                                var voltage = ((HardwareSetOffsetRequest)request).Offset;
-                                logger.LogDebug($"Set offset request: ch {chNum} voltage {voltage}");
-                                ch.VoltsOffset = voltage;
-                            }
-                            else if (request is HardwareSetVdivRequest)
-                            {
-                                var vdiv = ((HardwareSetVdivRequest)request).VoltsDiv;
-                                logger.LogDebug($"Set vdiv request: ch {chNum} div {vdiv}");
-                                ch.VoltsDiv = vdiv;
-                            }
-                            else if (request is HardwareSetBandwidthRequest)
-                            {
-                                var bw = ((HardwareSetBandwidthRequest)request).Bandwidth;
-                                logger.LogDebug($"Set bw request: ch {chNum} bw {bw}");
-                                ch.Bandwidth = bw;
-                            }
-                            else if (request is HardwareSetCouplingRequest)
-                            {
-                                var coup = ((HardwareSetCouplingRequest)request).Coupling;
-                                logger.LogDebug($"Set coup request: ch {chNum} coup {coup}");
-                                ch.Coupling = coup;
-                            }
-                            else if (request is HardwareSetEnabledRequest)
-                            {
-                                var enabled = ((HardwareSetEnabledRequest)request).Enabled;
-                                logger.LogDebug($"Set enabled request: ch {chNum} enabled {enabled}");
-                                ch.Enabled = enabled;
+                                if (request is HardwareSetOffsetRequest)
+                                {
+                                    var voltage = ((HardwareSetOffsetRequest)request).Offset;
+                                    logger.LogDebug($"Set offset request: ch {chNum} voltage {voltage}");
+                                    ch.VoltsOffset = voltage;
+                                }
+                                else if (request is HardwareSetVdivRequest)
+                                {
+                                    var vdiv = ((HardwareSetVdivRequest)request).VoltsDiv;
+                                    logger.LogDebug($"Set vdiv request: ch {chNum} div {vdiv}");
+                                    ch.VoltsDiv = vdiv;
+                                }
+                                else if (request is HardwareSetBandwidthRequest)
+                                {
+                                    var bw = ((HardwareSetBandwidthRequest)request).Bandwidth;
+                                    logger.LogDebug($"Set bw request: ch {chNum} bw {bw}");
+                                    ch.Bandwidth = bw;
+                                }
+                                else if (request is HardwareSetCouplingRequest)
+                                {
+                                    var coup = ((HardwareSetCouplingRequest)request).Coupling;
+                                    logger.LogDebug($"Set coup request: ch {chNum} coup {coup}");
+                                    ch.Coupling = coup;
+                                }
+                                else if (request is HardwareSetEnabledRequest)
+                                {
+                                    var enabled = ((HardwareSetEnabledRequest)request).Enabled;
+                                    logger.LogDebug($"Set enabled request: ch {chNum} enabled {enabled}");
+                                    ch.Enabled = enabled;
+                                }
+                                else
+                                {
+                                    logger.LogWarning($"Unknown HardwareConfigureChannelDto: {request}");
+                                }
+
+                                configuration.SetChannel(chNum, ch);
+                                ConfigureFromObject(thunderscope, configuration);
+                                thunderscope.EnableChannel(chNum);
                             }
                             else
                             {
-                                logger.LogWarning($"Unknown HardwareConfigureChannelDto: {request}");
+                                logger.LogWarning($"Unknown HardwareRequestDto: {request}");
                             }
 
-                            configuration.SetChannel(chNum, ch);
-                            ConfigureFromObject(thunderscope, configuration);
-                            thunderscope.EnableChannel(chNum);
-                        }
-                        else
-                        {
-                            logger.LogWarning($"Unknown HardwareRequestDto: {request}");
+                            // Signal back to the sender that config update happened.
+                            // hardwareResponseChannel.TryWrite(new HardwareResponseDto(request));
+
+                            if (hardwareRequestChannel.PeekAvailable() == 0)
+                                Thread.Sleep(150);
                         }
 
-                        // Signal back to the sender that config update happened.
-                        hardwareResponseChannel.TryWrite(new HardwareResponseDto(request));
-
+                        logger.LogDebug("Start again");
                         thunderscope.Start();
                     }
 

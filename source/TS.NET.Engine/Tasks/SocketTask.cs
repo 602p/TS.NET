@@ -131,14 +131,17 @@ namespace TS.NET.Engine
                                 {
                                     ThunderscopeChannel tChannel = cfg.GetChannel(ch);
 
+                                    float full_scale = ((float)tChannel.VoltsDiv / 1000f) * 5f; // 5 instead of 10 for signed
+
                                     chHeader.chNum = ch;
-                                    chHeader.scale = (((float)tChannel.VoltsDiv) / 1000f * 10f) / 255f;
-                                    chHeader.offset = (float)tChannel.VoltsOffset;
+                                    chHeader.scale = full_scale / 127f; // 127 instead of 255 for signed
+                                    chHeader.offset = -((float)tChannel.VoltsOffset); // needs chHeader.scale * 0x80 for signed
 
                                     // TODO: What is up with samples in the 245-255 range that seem to be spurious or maybe a representation of negative voltages?
 
-                                    logger.LogDebug($"ch {ch}: VoltsDiv={tChannel.VoltsDiv} -> .scale={chHeader.scale}, VoltsOffset={tChannel.VoltsOffset}, Coupling={tChannel.Coupling}");
-
+                                    if (ch == 0)
+                                        logger.LogDebug($"ch {ch}: VoltsDiv={tChannel.VoltsDiv} -> .scale={chHeader.scale}, VoltsOffset={tChannel.VoltsOffset} -> .offset = {chHeader.offset}, Coupling={tChannel.Coupling}");
+                                    
                                     // Length of this channel as 'depth'
                                     clientSocket.Send(new ReadOnlySpan<byte>(&chHeader, sizeof(ChannelHeader)));
                                     clientSocket.Send(data.Slice(ch * (int)channelLength, (int)channelLength));

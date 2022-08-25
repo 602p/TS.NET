@@ -172,7 +172,7 @@ namespace TS.NET.Engine
                         logger.LogDebug("Start acquisition");
 
                         hardwareRequestChannel.Write(new HardwareStartRequest());
-                        hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+                        // hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
                         return null;
                     }
@@ -182,7 +182,7 @@ namespace TS.NET.Engine
                         logger.LogDebug("Stop acquisition");
 
                         hardwareRequestChannel.Write(new HardwareStopRequest());
-                        hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+                        // hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
                         return null;
                     }
@@ -282,7 +282,7 @@ namespace TS.NET.Engine
                         logger.LogDebug($"Set ch {chNum} enabled {command=="ON"}");
 
                         hardwareRequestChannel.Write(new HardwareSetEnabledRequest(chNum, command=="ON"));
-                        hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+                        // hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
 
                         return null;
                     }
@@ -293,7 +293,7 @@ namespace TS.NET.Engine
                         logger.LogDebug($"Set ch {chNum} coupling to {coup}");
 
                         hardwareRequestChannel.Write(new HardwareSetCouplingRequest(chNum, (coup=="DC1M"?ThunderscopeCoupling.DC:ThunderscopeCoupling.AC)));
-                        hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+                        // hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
 
                         return null;
                     }
@@ -306,7 +306,7 @@ namespace TS.NET.Engine
                         offset = Math.Clamp(offset, -0.5, 0.5);
 
                         hardwareRequestChannel.Write(new HardwareSetOffsetRequest(chNum, offset));
-                        hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+                        // hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
 
                         return null;
                     }
@@ -331,7 +331,7 @@ namespace TS.NET.Engine
                         logger.LogDebug($"Set ch {chNum} range to {range}V -> {range_mv}mV -> {computedRange} computed mV");
 
                         hardwareRequestChannel.Write(new HardwareSetVdivRequest(chNum, computedRange));
-                        hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
+                        // hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
 
                         return null;
                     }
