@@ -181,7 +181,7 @@ namespace TS.NET.Engine
                         // Stop
                         logger.LogDebug("Stop acquisition");
 
-                        processingRequestChannel.Write(new ProcessingStartTriggerDto(true, true));
+                        processingRequestChannel.Write(new ProcessingStopTriggerDto());
                         // hardwareResponseChannel.Read(cancelToken);     // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
                         return null;
@@ -200,7 +200,7 @@ namespace TS.NET.Engine
                         // force capture
                         logger.LogDebug("Force acquisition");
 
-                        processingRequestChannel.Write(new ProcessingForceTriggerDto());
+                        processingRequestChannel.Write(new ProcessingStartTriggerDto(true, true));
                         // processingResponseChannel.Read(cancelToken);    // Maybe need some kind of UID to know this is the correct response? Bodge for now.
                         
                         return null;

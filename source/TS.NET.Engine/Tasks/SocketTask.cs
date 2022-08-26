@@ -139,8 +139,8 @@ namespace TS.NET.Engine
 
                                     // TODO: What is up with samples in the 245-255 range that seem to be spurious or maybe a representation of negative voltages?
 
-                                    if (ch == 0)
-                                        logger.LogDebug($"ch {ch}: VoltsDiv={tChannel.VoltsDiv} -> .scale={chHeader.scale}, VoltsOffset={tChannel.VoltsOffset} -> .offset = {chHeader.offset}, Coupling={tChannel.Coupling}");
+                                    // if (ch == 0)
+                                    //     logger.LogDebug($"ch {ch}: VoltsDiv={tChannel.VoltsDiv} -> .scale={chHeader.scale}, VoltsOffset={tChannel.VoltsOffset} -> .offset = {chHeader.offset}, Coupling={tChannel.Coupling}");
                                     
                                     // Length of this channel as 'depth'
                                     clientSocket.Send(new ReadOnlySpan<byte>(&chHeader, sizeof(ChannelHeader)));
@@ -156,7 +156,7 @@ namespace TS.NET.Engine
                         if (false)
                         {
                             logger.LogDebug("Remote wanted waveform but not ready -- forcing trigger");
-                            processingRequestChannel.Write(new ProcessingForceTriggerDto());
+                            processingRequestChannel.Write(new ProcessingStartTriggerDto(true, true));
                             // TODO: This doesn't seem like the behavior we want, unless in "AUTO" triggering mode.
                         }
                     }

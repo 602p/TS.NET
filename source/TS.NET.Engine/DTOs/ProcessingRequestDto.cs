@@ -6,7 +6,6 @@ namespace TS.NET.Engine
 
     public record ProcessingStartTriggerDto(bool ForceTrigger, bool OneShot) : ProcessingRequestDto;
     public record ProcessingStopTriggerDto() : ProcessingRequestDto;
-    public record ProcessingForceTriggerDto() : ProcessingRequestDto;
 
     public record ProcessingSetDepthDto(long Samples) : ProcessingRequestDto;
     public record ProcessingSetRateDto(long SamplingHz) : ProcessingRequestDto;

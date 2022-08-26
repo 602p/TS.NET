@@ -88,8 +88,8 @@ namespace TS.NET.Engine
                 var circularBuffer4 = new ChannelCircularAlignedBuffer((uint)processingConfig.ChannelLength + ThunderscopeMemory.Length);
 
                 bool forceTrigger = false;
-                bool enableTrigger = false;
                 bool oneShotTrigger = false;
+                bool triggerRunning = false;
 
                 while (true)
                 {
@@ -100,14 +100,16 @@ namespace TS.NET.Engine
                     {
                         if (request is ProcessingStartTriggerDto)
                         {
-                            enableTrigger = true;
+                            triggerRunning = true;
                             oneShotTrigger = ((ProcessingStartTriggerDto)request).OneShot;
                             forceTrigger = ((ProcessingStartTriggerDto)request).ForceTrigger;
-                            FlushProcessingQueue(processingChannel, inputChannel);
+
+                            logger.LogDebug($"Start: triggerRunning={triggerRunning}, oneShotTrigger={oneShotTrigger}, forceTrigger={forceTrigger}");
                         }
                         else if (request is ProcessingStopTriggerDto)
                         {
-                            enableTrigger = false;
+                            triggerRunning = false;
+                            logger.LogDebug("Stop");
                         }
                         else if (request is ProcessingSetDepthDto)
                         {
@@ -147,128 +149,123 @@ namespace TS.NET.Engine
                     dequeueCounter++;
                     oneSecondDequeueCount++;
 
-                    if (!enableTrigger)
+                    int channelLength = processingConfig.ChannelLength;
+                    switch (processingDto.Configuration.AdcChannels)
                     {
-                        inputChannel.Write(processingDto.Memory);
-                    }
-                    else
-                    {
-                        int channelLength = processingConfig.ChannelLength;
-                        switch (processingDto.Configuration.AdcChannels)
-                        {
-                            // Processing pipeline:
-                            // Shuffle (if needed)
+                        // Processing pipeline:
+                        // Shuffle (if needed)
+                        // Horizontal sum (EDIT: triggering should happen _before_ horizontal sum)
+                        // Write to circular buffer
+                        // Trigger
+                        // Data segment on trigger (if needed)
+                        case AdcChannels.None:
+                            break;
+                        case AdcChannels.One:
                             // Horizontal sum (EDIT: triggering should happen _before_ horizontal sum)
+                            //if (config.HorizontalSumLength != HorizontalSumLength.None)
+                            //    throw new NotImplementedException();
                             // Write to circular buffer
+                            circularBuffer1.Write(processingDto.Memory.Span);
                             // Trigger
-                            // Data segment on trigger (if needed)
-                            case AdcChannels.None:
-                                break;
-                            case AdcChannels.One:
-                                // Horizontal sum (EDIT: triggering should happen _before_ horizontal sum)
-                                //if (config.HorizontalSumLength != HorizontalSumLength.None)
-                                //    throw new NotImplementedException();
-                                // Write to circular buffer
-                                circularBuffer1.Write(processingDto.Memory.Span);
-                                // Trigger
-                                if (processingConfig.TriggerChannel != TriggerChannel.None)
+                            if (processingConfig.TriggerChannel != TriggerChannel.None)
+                            {
+                                var triggerChannelBuffer = processingConfig.TriggerChannel switch
                                 {
-                                    var triggerChannelBuffer = processingConfig.TriggerChannel switch
-                                    {
-                                        TriggerChannel.One => processingDto.Memory.Span,
-                                        _ => throw new ArgumentException("Invalid TriggerChannel value")
-                                    };
-                                    trigger.ProcessSimd(input: triggerChannelBuffer, triggerIndices: triggerIndices, out uint triggerCount, holdoffEndIndices: holdoffEndIndices, out uint holdoffEndCount);
-                                }
-                                // Finished with the memory, return it
-                                inputChannel.Write(processingDto.Memory);
-                                break;
-                            case AdcChannels.Two:
-                                // Shuffle
-                                Shuffle.TwoChannels(input: processingDto.Memory.Span, output: shuffleBuffer);
-                                // Finished with the memory, return it
-                                inputChannel.Write(processingDto.Memory);
-                                // Horizontal sum (EDIT: triggering should happen _before_ horizontal sum)
-                                //if (config.HorizontalSumLength != HorizontalSumLength.None)
-                                //    throw new NotImplementedException();
-                                // Write to circular buffer
-                                circularBuffer1.Write(postShuffleCh1_2);
-                                circularBuffer2.Write(postShuffleCh2_2);
-                                // Trigger
-                                if (processingConfig.TriggerChannel != TriggerChannel.None)
+                                    TriggerChannel.One => processingDto.Memory.Span,
+                                    _ => throw new ArgumentException("Invalid TriggerChannel value")
+                                };
+                                trigger.ProcessSimd(input: triggerChannelBuffer, triggerIndices: triggerIndices, out uint triggerCount, holdoffEndIndices: holdoffEndIndices, out uint holdoffEndCount);
+                            }
+                            // Finished with the memory, return it
+                            inputChannel.Write(processingDto.Memory);
+                            break;
+                        case AdcChannels.Two:
+                            // Shuffle
+                            Shuffle.TwoChannels(input: processingDto.Memory.Span, output: shuffleBuffer);
+                            // Finished with the memory, return it
+                            inputChannel.Write(processingDto.Memory);
+                            // Horizontal sum (EDIT: triggering should happen _before_ horizontal sum)
+                            //if (config.HorizontalSumLength != HorizontalSumLength.None)
+                            //    throw new NotImplementedException();
+                            // Write to circular buffer
+                            circularBuffer1.Write(postShuffleCh1_2);
+                            circularBuffer2.Write(postShuffleCh2_2);
+                            // Trigger
+                            if (processingConfig.TriggerChannel != TriggerChannel.None)
+                            {
+                                var triggerChannelBuffer = processingConfig.TriggerChannel switch
                                 {
-                                    var triggerChannelBuffer = processingConfig.TriggerChannel switch
-                                    {
-                                        TriggerChannel.One => postShuffleCh1_2,
-                                        TriggerChannel.Two => postShuffleCh2_2,
-                                        _ => throw new ArgumentException("Invalid TriggerChannel value")
-                                    };
-                                    trigger.ProcessSimd(input: triggerChannelBuffer, triggerIndices: triggerIndices, out uint triggerCount, holdoffEndIndices: holdoffEndIndices, out uint holdoffEndCount);
-                                }
-                                break;
-                            case AdcChannels.Four:
-                                // Shuffle
-                                Shuffle.FourChannels(input: processingDto.Memory.Span, output: shuffleBuffer);
-                                // Finished with the memory, return it
-                                inputChannel.Write(processingDto.Memory);
-                                // Horizontal sum (EDIT: triggering should happen _before_ horizontal sum)
-                                //if (config.HorizontalSumLength != HorizontalSumLength.None)
-                                //    throw new NotImplementedException();
-                                // Write to circular buffer
-                                circularBuffer1.Write(postShuffleCh1_4);
-                                circularBuffer2.Write(postShuffleCh2_4);
-                                circularBuffer3.Write(postShuffleCh3_4);
-                                circularBuffer4.Write(postShuffleCh4_4);
-                                // Trigger
-                                if (processingConfig.TriggerChannel != TriggerChannel.None)
+                                    TriggerChannel.One => postShuffleCh1_2,
+                                    TriggerChannel.Two => postShuffleCh2_2,
+                                    _ => throw new ArgumentException("Invalid TriggerChannel value")
+                                };
+                                trigger.ProcessSimd(input: triggerChannelBuffer, triggerIndices: triggerIndices, out uint triggerCount, holdoffEndIndices: holdoffEndIndices, out uint holdoffEndCount);
+                            }
+                            break;
+                        case AdcChannels.Four:
+                            // Shuffle
+                            Shuffle.FourChannels(input: processingDto.Memory.Span, output: shuffleBuffer);
+                            // Finished with the memory, return it
+                            inputChannel.Write(processingDto.Memory);
+                            // Horizontal sum (EDIT: triggering should happen _before_ horizontal sum)
+                            //if (config.HorizontalSumLength != HorizontalSumLength.None)
+                            //    throw new NotImplementedException();
+                            // Write to circular buffer
+                            circularBuffer1.Write(postShuffleCh1_4);
+                            circularBuffer2.Write(postShuffleCh2_4);
+                            circularBuffer3.Write(postShuffleCh3_4);
+                            circularBuffer4.Write(postShuffleCh4_4);
+                            // Trigger
+                            if (triggerRunning && processingConfig.TriggerChannel != TriggerChannel.None)
+                            {
+                                var triggerChannelBuffer = processingConfig.TriggerChannel switch
                                 {
-                                    var triggerChannelBuffer = processingConfig.TriggerChannel switch
-                                    {
-                                        TriggerChannel.One => postShuffleCh1_4,
-                                        TriggerChannel.Two => postShuffleCh2_4,
-                                        TriggerChannel.Three => postShuffleCh3_4,
-                                        TriggerChannel.Four => postShuffleCh4_4,
-                                        _ => throw new ArgumentException("Invalid TriggerChannel value")
-                                    };
-                                    trigger.ProcessSimd(input: triggerChannelBuffer, triggerIndices: triggerIndices, out uint triggerCount, holdoffEndIndices: holdoffEndIndices, out uint holdoffEndCount);
-                                    oneSecondHoldoffCount += holdoffEndCount;
-                                    if (holdoffEndCount > 0)
-                                    {
-                                        for (int i = 0; i < holdoffEndCount; i++)
-                                        {
-                                            var bridgeSpan = bridge.AcquiringRegion;
-                                            uint holdoffEndIndex = (uint)postShuffleCh1_4.Length - holdoffEndIndices[i];
-                                            circularBuffer1.Read(bridgeSpan.Slice(0, channelLength), holdoffEndIndex);
-                                            circularBuffer2.Read(bridgeSpan.Slice(channelLength, channelLength), holdoffEndIndex);
-                                            circularBuffer3.Read(bridgeSpan.Slice(channelLength + channelLength, channelLength), holdoffEndIndex);
-                                            circularBuffer4.Read(bridgeSpan.Slice(channelLength + channelLength + channelLength, channelLength), holdoffEndIndex);
-                                            bridge.DataWritten();
-                                            bridge.SwitchRegionIfNeeded();
-                                        }
-                                        forceTrigger = false;       // Ignore the force trigger request, a normal trigger happened
-                                        if (oneShotTrigger) enableTrigger = false;
-                                    }
-                                    else if (forceTrigger)
+                                    TriggerChannel.One => postShuffleCh1_4,
+                                    TriggerChannel.Two => postShuffleCh2_4,
+                                    TriggerChannel.Three => postShuffleCh3_4,
+                                    TriggerChannel.Four => postShuffleCh4_4,
+                                    _ => throw new ArgumentException("Invalid TriggerChannel value")
+                                };
+                                trigger.ProcessSimd(input: triggerChannelBuffer, triggerIndices: triggerIndices, out uint triggerCount, holdoffEndIndices: holdoffEndIndices, out uint holdoffEndCount);
+                                oneSecondHoldoffCount += holdoffEndCount;
+                                if (holdoffEndCount > 0)
+                                {
+                                    // logger.LogDebug("Trigger Fired");
+                                    for (int i = 0; i < holdoffEndCount; i++)
                                     {
                                         var bridgeSpan = bridge.AcquiringRegion;
-                                        circularBuffer1.Read(bridgeSpan.Slice(0, channelLength), 0);
-                                        circularBuffer2.Read(bridgeSpan.Slice(channelLength, channelLength), 0);
-                                        circularBuffer3.Read(bridgeSpan.Slice(channelLength + channelLength, channelLength), 0);
-                                        circularBuffer4.Read(bridgeSpan.Slice(channelLength + channelLength + channelLength, channelLength), 0);
+                                        uint holdoffEndIndex = (uint)postShuffleCh1_4.Length - holdoffEndIndices[i];
+                                        circularBuffer1.Read(bridgeSpan.Slice(0, channelLength), holdoffEndIndex);
+                                        circularBuffer2.Read(bridgeSpan.Slice(channelLength, channelLength), holdoffEndIndex);
+                                        circularBuffer3.Read(bridgeSpan.Slice(channelLength + channelLength, channelLength), holdoffEndIndex);
+                                        circularBuffer4.Read(bridgeSpan.Slice(channelLength + channelLength + channelLength, channelLength), holdoffEndIndex);
                                         bridge.DataWritten();
                                         bridge.SwitchRegionIfNeeded();
-                                        forceTrigger = false;
-                                        if (oneShotTrigger) enableTrigger = false;
                                     }
-                                    else
-                                    {
-                                        bridge.SwitchRegionIfNeeded();
-                                    }
-                                    
+                                    forceTrigger = false;       // Ignore the force trigger request, a normal trigger happened
+                                    if (oneShotTrigger) triggerRunning = false;
                                 }
-                                //logger.LogInformation($"Dequeue #{dequeueCounter++}, Ch1 triggers: {triggerCount1}, Ch2 triggers: {triggerCount2}, Ch3 triggers: {triggerCount3}, Ch4 triggers: {triggerCount4} ");
-                                break;
-                        }
+                                else if (forceTrigger)
+                                {
+                                    // logger.LogDebug("Force Trigger fired");
+                                    var bridgeSpan = bridge.AcquiringRegion;
+                                    circularBuffer1.Read(bridgeSpan.Slice(0, channelLength), 0);
+                                    circularBuffer2.Read(bridgeSpan.Slice(channelLength, channelLength), 0);
+                                    circularBuffer3.Read(bridgeSpan.Slice(channelLength + channelLength, channelLength), 0);
+                                    circularBuffer4.Read(bridgeSpan.Slice(channelLength + channelLength + channelLength, channelLength), 0);
+                                    bridge.DataWritten();
+                                    bridge.SwitchRegionIfNeeded();
+                                    forceTrigger = false;
+                                    if (oneShotTrigger) triggerRunning = false;
+                                }
+                                else
+                                {
+                                    bridge.SwitchRegionIfNeeded();
+                                }
+                                
+                            }
+                            //logger.LogInformation($"Dequeue #{dequeueCounter++}, Ch1 triggers: {triggerCount1}, Ch2 triggers: {triggerCount2}, Ch3 triggers: {triggerCount3}, Ch4 triggers: {triggerCount4} ");
+                            break;
                     }
 
                     if (oneSecond.ElapsedMilliseconds >= 10000)

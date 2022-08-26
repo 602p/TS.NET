@@ -21,6 +21,7 @@ namespace TS.NET
         private bool IsHeaderSet { get { GetHeader(); return header.Version != 0; } }
         private readonly IInterprocessSemaphoreReleaser dataRequestSemaphore;
         private readonly IInterprocessSemaphoreWaiter dataReadySemaphore;
+        private bool hasSignaledRequest = false;
 
         public ReadOnlySpan<byte> AcquiredRegion { get { return GetAcquiredRegion(); } }
 
@@ -102,8 +103,23 @@ namespace TS.NET
 
         public bool RequestAndWaitForData(int millisecondsTimeout)
         {
-            dataRequestSemaphore.Release();
-            return dataReadySemaphore.Wait(millisecondsTimeout);
+            if (!hasSignaledRequest)
+            {
+                // Only signal request once, or we will run up semaphore counter
+                dataRequestSemaphore.Release();
+                hasSignaledRequest = true;
+            }
+
+            bool wasReady = dataReadySemaphore.Wait(millisecondsTimeout);
+
+            if (wasReady)
+            {
+                // Now that the bridge has tick-tocked, the next request will be 'real'
+                // TODO: Should this be a separate method, or part of GetPointer() ?
+                hasSignaledRequest = false;
+            }
+
+            return wasReady;
         }
 
         private void GetHeader()

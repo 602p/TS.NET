@@ -117,7 +117,12 @@ namespace TS.NET
                     _ => throw new InvalidDataException("Enum value not handled, add enum value to switch")
                 };
                 SetHeader();
+                // Console.WriteLine("[BW] SwitchRegionIfNeeded -> switching!");
                 dataReadySemaphore.Release();        // Allow UI to use the acquired region
+            }
+            else
+            {
+                // Console.WriteLine("[BW] SwitchRegionIfNeeded -> NOT switching");
             }
         }
 
