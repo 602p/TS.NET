@@ -43,11 +43,13 @@ namespace TS.NET.Engine
         {
             try
             {
+                const int initialMaxChannelLength = 10 * 1000000;
+
                 Thread.CurrentThread.Name = "TS.NET Processing";
 
                 ThunderscopeProcessing processingConfig = new()
                 {
-                    ChannelLength = 10 * 1000000,//(ulong)ChannelLength.OneHundredM,
+                    ChannelLength = initialMaxChannelLength,
                     HorizontalSumLength = HorizontalSumLength.None,
                     TriggerChannel = TriggerChannel.One,
                     TriggerMode = TriggerMode.Normal,
@@ -91,6 +93,8 @@ namespace TS.NET.Engine
                 bool oneShotTrigger = false;
                 bool triggerRunning = false;
 
+                uint clientRequestedDepth = (uint)processingConfig.ChannelLength;
+
                 while (true)
                 {
                     cancelToken.ThrowIfCancellationRequested();
@@ -114,6 +118,10 @@ namespace TS.NET.Engine
                         else if (request is ProcessingSetDepthDto)
                         {
                             var depth = ((ProcessingSetDepthDto)request).Samples;
+                            depth = Math.Min(depth, initialMaxChannelLength);
+                            processingConfig.ChannelLength = (int)depth;
+                            // TODO: This races with a reader since there are two regions and only one processingConfig
+                            // TODO: Does not resize buffers above, so cannot increase from initial
                         }
                         else if (request is ProcessingSetRateDto)
                         {

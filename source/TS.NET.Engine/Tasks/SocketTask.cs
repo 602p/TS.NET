@@ -74,9 +74,6 @@ namespace TS.NET.Engine
 
                 uint seqnum = 0;
 
-                var processingCfg = bridge.Processing;//.GetConfiguration();
-                ulong channelLength = (ulong)processingCfg.ChannelLength;
-
                 clientSocket.NoDelay = true;
 
                 while (true)
@@ -103,6 +100,9 @@ namespace TS.NET.Engine
                             // logger.LogDebug("Send waveform...");
                             var cfg = bridge.Configuration;
                             var data = bridge.AcquiredRegion;
+
+                            var processingCfg = bridge.Processing;//.GetConfiguration();
+                            ulong channelLength = (ulong)processingCfg.ChannelLength;
 
                             WaveformHeader header = new()
                             {

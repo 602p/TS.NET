@@ -11,6 +11,8 @@ using TS.NET.Engine;
 // The use of hardwareRequestChannel is to prevent 2 classes of bug: locking and thread safety.
 //   By serialising the config-update/data-read it also allows for specific behaviours (like pausing acquisition on certain config updates) and ensuring a perfect match between sample-block & hardware configuration that created it.
 
+Console.WriteLine("Starting...");
+
 Console.Title = "Engine";
 using (Process p = Process.GetCurrentProcess())
     p.PriorityClass = ProcessPriorityClass.High;

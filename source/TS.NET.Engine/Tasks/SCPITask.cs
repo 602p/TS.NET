@@ -353,6 +353,21 @@ namespace TS.NET.Engine
                         logger.LogDebug("Reply to *IDN? query");
                         return "ThunderScope,(Bridge),NOSERIAL,NOVERSION\n";
                     }
+                    else if (command == "DEPTHS")
+                    {
+                        logger.LogDebug("Reply to DEPTHS? query");
+                        var s = "";
+                        for (int mul = 1000; mul <= 10 * 1000000; mul *= 10) // TODO: Single-source-of-truth for top end
+                        {
+                            s += mul + "," + (mul*2.5) + "," + (mul*5) + ",";
+                        }
+                        return s + "\n";
+                    }
+                     else if (command == "RATES")
+                    {
+                        logger.LogDebug("Reply to RATES? query");
+                        return "" + (1000000 * 4) + ",\n";
+                    }
                 }
             }
 
